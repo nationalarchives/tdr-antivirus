@@ -1,0 +1,11 @@
+ARG ACCOUNT_NUMBER
+ARG STAGE
+FROM $ACCOUNT_NUMBER.dkr.ecr.eu-west-2.amazonaws.com/yara:$STAGE
+WORKDIR /rules
+COPY rule-sources /rules/rule-sources
+COPY src/compile.py /rules/compile.py
+RUN apt-get -y update && apt-get -y install python3-dev python3-pip wget && \
+            pip3 install yara-python && \
+            cat rule-sources | xargs -n1 git clone && \
+            wget https://raw.githubusercontent.com/Yara-Rules/rules/master/malware/MALW_Eicar && \
+            ./compile.py

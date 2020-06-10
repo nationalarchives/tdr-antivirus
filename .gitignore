@@ -1,0 +1,6 @@
+dependencies.zip
+lambda/
+venv
+output
+.idea
+__pycache__
