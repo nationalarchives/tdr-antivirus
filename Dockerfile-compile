@@ -1,6 +1,6 @@
 ARG ACCOUNT_NUMBER
-ARG STAGE
-FROM $ACCOUNT_NUMBER.dkr.ecr.eu-west-2.amazonaws.com/yara:$STAGE
+ARG VERSION
+FROM $ACCOUNT_NUMBER.dkr.ecr.eu-west-2.amazonaws.com/yara:$VERSION
 WORKDIR /rules
 COPY rule-sources /rules/rule-sources
 COPY src/compile.py /rules/compile.py

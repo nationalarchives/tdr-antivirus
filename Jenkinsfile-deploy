@@ -1,0 +1,7 @@
+library("tdr-jenkinslib")
+
+deployToLambda(
+        stage: params.STAGE,
+        libraryName: "antivirus",
+        version: params.TO_DEPLOY
+)
