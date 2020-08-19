@@ -64,7 +64,7 @@ def call(Map config) {
                   }
                 }
               }
-              stage {
+              stage("Upload function") {
                 steps {
                   script {
                     unstash "function.zip"
