@@ -1,110 +1,107 @@
-def call(Map config) {
-  library("tdr-jenkinslib")
+library("tdr-jenkinslib")
 
-  def versionTag = "v${env.BUILD_NUMBER}"
-  def repo = "tdr-${config.libraryName}"
+def versionTag = "v${env.BUILD_NUMBER}"
+def repo = "tdr-${config.libraryName}"
 
-  pipeline {
-    agent none
-    parameters {
-      text(name: "BUILD_IMAGE_TAG", defaultValue: "latest", description: "The stage you are running the lambda tests for")
-    }
-    stages {
-      stage("Run git secrets") {
-        agent {
-          label "master"
-        }
-        steps {
-          script {
-            tdr.runGitSecrets(repo)
-          }
+pipeline {
+  agent none
+  parameters {
+    text(name: "BUILD_IMAGE_TAG", defaultValue: "latest", description: "The stage you are running the lambda tests for")
+  }
+  stages {
+    stage("Run git secrets") {
+      agent {
+        label "master"
+      }
+      steps {
+        script {
+          tdr.runGitSecrets(repo)
         }
       }
-      stage('Run tests and deploy to S3 on master') {
-        agent {
-          ecs {
-            inheritFrom "aws"
-            taskrole "arn:aws:iam::${env.MANAGEMENT_ACCOUNT}:role/TDRJenkinsNodeLambdaRoleIntg"
+    }
+    stage('Run tests and deploy to S3 on master') {
+      agent {
+        ecs {
+          inheritFrom "aws"
+          taskrole "arn:aws:iam::${env.MANAGEMENT_ACCOUNT}:role/TDRJenkinsNodeLambdaRoleIntg"
+        }
+      }
+
+      stages {
+        stage("Run tests") {
+          steps {
+            script {
+              sh "pip install -r requirements.txt"
+              sh "python -m pytest"
+            }
           }
         }
 
-        stages {
-          stage("Run tests") {
-            steps {
-              script {
-                sh "pip install -r requirements.txt"
-                sh "python -m pytest"
-              }
-            }
+        stage("Deploy to integration") {
+          when {
+            expression { env.BRANCH_NAME == "master"}
           }
 
-          stage("Deploy to integration") {
-            when {
-              expression { env.BRANCH_NAME == "master"}
-            }
-
-            stages {
-              stage("Build zip file") {
-                agent {
-                  label "master"
-                }
-                steps {
-                  script {
-                    sh "docker run -itd --rm --name dependencies ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-dependencies:${BUILD_IMAGE_TAG}"
-                    sh "docker cp dependencies:/lambda/dependencies.zip ."
-                    sh "docker run -itd --rm --name rules ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-rules:${BUILD_IMAGE_TAG}"
-                    sh "mkdir lambda"
-                    sh "docker cp rules:/rules/output ./lambda"
-                    sh "unzip -q dependencies.zip -d ./lambda"
-                    sh "cp src/matcher.py ./lambda"
-                    dir("lambda") {
-                      sh "zip -r9 function.zip ."
-                      stash includes: "function.zip", name: "function.zip"
-                    }
-                  }
-                }
+          stages {
+            stage("Build zip file") {
+              agent {
+                label "master"
               }
-              stage("Upload function") {
-                steps {
-                  script {
-                    unstash "function.zip"
-                    //I know it's not a jar, the deploy jenkinslib function needs changing to take a name which is another ticket.
-                    sh "aws s3 cp function.zip s3://tdr-backend-code-mgmt/${versionTag}/${config.libraryName}.jar"
-
-                    tdr.configureJenkinsGitUser()
-
-                    sh "git tag ${versionTag}"
-                    sh "git checkout ${env.BRANCH_NAME}"
-
-                    tdr.pushGitHubBranch("master")
-
-                    build(
-                        job: "TDR Antivirus Deploy",
-                        parameters: [
-                            string(name: "STAGE", value: "intg"),
-                            string(name: "TO_DEPLOY", value: versionTag)
-                        ],
-                        wait: false)
+              steps {
+                script {
+                  sh "docker run -itd --rm --name dependencies ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-dependencies:${BUILD_IMAGE_TAG}"
+                  sh "docker cp dependencies:/lambda/dependencies.zip ."
+                  sh "docker run -itd --rm --name rules ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-rules:${BUILD_IMAGE_TAG}"
+                  sh "mkdir lambda"
+                  sh "docker cp rules:/rules/output ./lambda"
+                  sh "unzip -q dependencies.zip -d ./lambda"
+                  sh "cp src/matcher.py ./lambda"
+                  dir("lambda") {
+                    sh "zip -r9 function.zip ."
+                    stash includes: "function.zip", name: "function.zip"
                   }
                 }
               }
             }
+            stage("Upload function") {
+              steps {
+                script {
+                  unstash "function.zip"
+                  //I know it's not a jar, the deploy jenkinslib function needs changing to take a name which is another ticket.
+                  sh "aws s3 cp function.zip s3://tdr-backend-code-mgmt/${versionTag}/${config.libraryName}.jar"
+
+                  tdr.configureJenkinsGitUser()
+
+                  sh "git tag ${versionTag}"
+                  sh "git checkout ${env.BRANCH_NAME}"
+
+                  tdr.pushGitHubBranch("master")
+
+                  build(
+                      job: "TDR Antivirus Deploy",
+                      parameters: [
+                          string(name: "STAGE", value: "intg"),
+                          string(name: "TO_DEPLOY", value: versionTag)
+                      ],
+                      wait: false)
+                }
+              }
+            }
           }
-        }
-      }
-    }
-    post {
-      failure {
-        script {
-          tdr.reportFailedBuildToGitHub(repo, env.GIT_COMMIT)
-        }
-      }
-      success {
-        script {
-          tdr.reportSuccessfulBuildToGitHub(repo, env.GIT_COMMIT)
         }
       }
     }
   }
+  post {
+    failure {
+      script {
+        tdr.reportFailedBuildToGitHub(repo, env.GIT_COMMIT)
+      }
+    }
+    success {
+      script {
+        tdr.reportSuccessfulBuildToGitHub(repo, env.GIT_COMMIT)
+      }
+    }
+  }
 }
-
