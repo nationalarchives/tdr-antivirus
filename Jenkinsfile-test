@@ -64,28 +64,29 @@ def call(Map config) {
                   }
                 }
               }
-            }
+              stage {
+                steps {
+                  script {
+                    unstash "function.zip"
+                    //I know it's not a jar, the deploy jenkinslib function needs changing to take a name which is another ticket.
+                    sh "aws s3 cp function.zip s3://tdr-backend-code-mgmt/${versionTag}/${config.libraryName}.jar"
 
-            steps {
-              script {
-                unstash "function.zip"
-                //I know it's not a jar, the deploy jenkinslib function needs changing to take a name which is another ticket.
-                sh "aws s3 cp function.zip s3://tdr-backend-code-mgmt/${versionTag}/${config.libraryName}.jar"
+                    tdr.configureJenkinsGitUser()
 
-                tdr.configureJenkinsGitUser()
+                    sh "git tag ${versionTag}"
+                    sh "git checkout ${env.BRANCH_NAME}"
 
-                sh "git tag ${versionTag}"
-                sh "git checkout ${env.BRANCH_NAME}"
+                    tdr.pushGitHubBranch("master")
 
-                tdr.pushGitHubBranch("master")
-
-                build(
-                    job: "TDR Antivirus Deploy",
-                    parameters: [
-                        string(name: "STAGE", value: "intg"),
-                        string(name: "TO_DEPLOY", value: versionTag)
-                    ],
-                    wait: false)
+                    build(
+                        job: "TDR Antivirus Deploy",
+                        parameters: [
+                            string(name: "STAGE", value: "intg"),
+                            string(name: "TO_DEPLOY", value: versionTag)
+                        ],
+                        wait: false)
+                  }
+                }
               }
             }
           }
