@@ -30,8 +30,10 @@ def call(Map config) {
 
         stages {
           stage("Run tests") {
-            sh "pip install -r requirements.txt"
-            sh "python -m pytest"
+            script {
+              sh "pip install -r requirements.txt"
+              sh "python -m pytest"
+            }
           }
 
           stage("Deploy to integration") {
