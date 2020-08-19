@@ -30,9 +30,11 @@ def call(Map config) {
 
         stages {
           stage("Run tests") {
-            script {
-              sh "pip install -r requirements.txt"
-              sh "python -m pytest"
+            steps {
+              script {
+                sh "pip install -r requirements.txt"
+                sh "python -m pytest"
+              }
             }
           }
 
