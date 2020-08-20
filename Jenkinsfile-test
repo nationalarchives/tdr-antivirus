@@ -8,7 +8,7 @@ pipeline {
     label "master"
   }
   parameters {
-    text(name: "BUILD_IMAGE_TAG", defaultValue: "latest", description: "The stage you are running the lambda tests for")
+    text(name: "BUILD_IMAGE_TAG", defaultValue: "latest", description: "The image tag for the base yara images")
   }
   stages {
     stage("Run git secrets") {
