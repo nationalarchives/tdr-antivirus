@@ -4,15 +4,14 @@ def versionTag = "v${env.BUILD_NUMBER}"
 def repo = "tdr-antivirus"
 
 pipeline {
-  agent none
+  agent {
+    label "master"
+  }
   parameters {
     text(name: "BUILD_IMAGE_TAG", defaultValue: "latest", description: "The stage you are running the lambda tests for")
   }
   stages {
     stage("Run git secrets") {
-      agent {
-        label "master"
-      }
       steps {
         script {
           tdr.runGitSecrets(repo)
@@ -35,9 +34,6 @@ pipeline {
     }
 
     stage("Deploy to integration") {
-      agent {
-        label "master"
-      }
       when {
         expression { env.BRANCH_NAME == "master"}
       }

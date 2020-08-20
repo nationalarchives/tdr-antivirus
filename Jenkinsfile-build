@@ -11,19 +11,19 @@ pipeline {
     label "master"
   }
   stages {
-    stage('Run tests and deploy to S3 on master') {
+    stage('Build and push yara docker images') {
       steps {
         script {
           sh "docker build -f Dockerfile-yara --build-arg YARA_VERSION=${yaraVersion} -t ${imageAccount}/yara:${versionTag} ."
           sh "docker build -f Dockerfile-dependencies --build-arg YARA_VERSION=${yaraVersion} -t ${imageAccount}/yara-dependencies:${versionTag} ."
           sh "docker build -f Dockerfile-compile -t ${imageAccount}/yara-rules:${versionTag} --build-arg ACCOUNT_NUMBER=${env.MANAGEMENT_ACCOUNT} --build-arg VERSION=${versionTag} ."
-          sh "aws ecr get-login --no-include-email | bash"
+          sh "aws ecr get-login --region eu-west-2 --no-include-email | bash"
           sh "docker push ${imageAccount}/yara:${versionTag}"
           sh "docker push ${imageAccount}/yara-dependencies:${versionTag}"
           sh "docker push ${imageAccount}/yara-rules:${versionTag}"
           sh "docker tag ${imageAccount}/yara:${versionTag} ${imageAccount}/yara:latest"
           sh "docker tag ${imageAccount}/yara-dependencies:${versionTag} ${imageAccount}/yara-dependencies:latest"
-          sh "docker tag ${imageAccount}/yara-rules:${versionTag} ${imageAccount}/yara-rules::latest"
+          sh "docker tag ${imageAccount}/yara-rules:${versionTag} ${imageAccount}/yara-rules:latest"
           sh "docker push ${imageAccount}/yara:latest"
           sh "docker push ${imageAccount}/yara-dependencies:latest"
           sh "docker push ${imageAccount}/yara-rules:latest"
