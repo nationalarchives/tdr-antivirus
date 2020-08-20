@@ -2,6 +2,6 @@ library("tdr-jenkinslib")
 
 deployToLambda(
         stage: params.STAGE,
-        libraryName: "antivirus",
+        libraryName: "yara-av",
         version: params.TO_DEPLOY
 )
