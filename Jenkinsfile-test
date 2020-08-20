@@ -78,7 +78,7 @@ pipeline {
               sh "git tag ${versionTag}"
               sh "git checkout ${env.BRANCH_NAME}"
 
-              tdr.pushGitHubBranch("master")
+              tdr.pushGitHubBranch(env.BRANCH_NAME)
 
               build(
                   job: "TDR Antivirus Deploy",
