@@ -33,13 +33,15 @@ pipeline {
       when {
         expression { env.BRANCH_NAME == "master"}
       }
+      steps {
+        build(
+            job: "TDR Antivirus Bundle",
+            parameters: [
+                string(name: "BUILD_IMAGE_TAG", value: "latest")
+            ],
+            wait: false)
+      }
 
-      build(
-          job: "TDR Antivirus Bundle",
-          parameters: [
-              string(name: "BUILD_IMAGE_TAG", value: "latest")
-          ],
-          wait: false)
     }
   }
   post {
