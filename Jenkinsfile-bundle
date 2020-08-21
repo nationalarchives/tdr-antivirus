@@ -1,5 +1,7 @@
 library("tdr-jenkinslib")
 
+def versionTag = "v${env.BUILD_NUMBER}"
+
 pipeline {
   agent {
     label "master"
@@ -15,9 +17,9 @@ pipeline {
           sh "docker stop dependencies | true"
           sh "docker stop rules | true"
           sh "rm -rf lambda"
-          sh "docker run -itd --rm --name dependencies ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-dependencies:${BUILD_IMAGE_TAG}"
+          sh "docker run -itd --rm --name dependencies ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-dependencies:${params.BUILD_IMAGE_TAG}"
           sh "docker cp dependencies:/lambda/dependencies.zip ."
-          sh "docker run -itd --rm --name rules ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-rules:${BUILD_IMAGE_TAG}"
+          sh "docker run -itd --rm --name rules ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-rules:${params.BUILD_IMAGE_TAG}"
           sh "mkdir lambda"
           sh "docker cp rules:/rules/output ./lambda"
           sh "unzip -q dependencies.zip -d ./lambda"
