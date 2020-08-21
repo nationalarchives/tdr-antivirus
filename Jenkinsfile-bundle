@@ -1,4 +1,4 @@
-library("tdr-jenkins-lib")
+library("tdr-jenkinslib")
 
 pipeline {
   agent {
