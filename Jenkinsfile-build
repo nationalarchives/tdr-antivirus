@@ -28,8 +28,10 @@ pipeline {
           sh "docker push ${imageAccount}/yara-dependencies:latest"
           sh "docker push ${imageAccount}/yara-rules:latest"
           build(
-              job: "TDR Antivirus Test/master",
-              parameters: [string(name: "BUILD_IMAGE_TAG", value: versionTag)],
+              job: "TDR Antivirus Bundle",
+              parameters: [
+                  string(name: "BUILD_IMAGE_TAG", value: "latest")
+              ],
               wait: false)
       }
     }
