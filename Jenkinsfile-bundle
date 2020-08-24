@@ -41,8 +41,7 @@ pipeline {
       steps {
         script {
           unstash "function.zip"
-          //I know it's not a jar, the deploy jenkinslib function needs changing to take a name which is another ticket.
-          sh "aws s3 cp function.zip s3://tdr-backend-code-mgmt/${versionTag}/yara-av.jar"
+          sh "aws s3 cp function.zip s3://tdr-backend-code-mgmt/${versionTag}/yara-av.zip"
 
           tdr.configureJenkinsGitUser()
 
