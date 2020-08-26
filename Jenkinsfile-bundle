@@ -61,7 +61,6 @@ pipeline {
   post {
     always {
       script {
-        sh "rm -rf lambda"
         sh "docker stop dependencies | true"
         sh "docker stop rules | true"
       }
