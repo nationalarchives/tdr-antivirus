@@ -14,8 +14,6 @@ pipeline {
       steps {
         script {
           sh "aws ecr get-login --region eu-west-2 --no-include-email | bash"
-          sh "docker stop dependencies | true"
-          sh "docker stop rules | true"
           sh "rm -rf lambda"
           sh "docker run -itd --rm --name dependencies ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-dependencies:${params.BUILD_IMAGE_TAG}"
           sh "docker cp dependencies:/lambda/dependencies.zip ."
@@ -58,6 +56,14 @@ pipeline {
               ],
               wait: false)
         }
+      }
+    }
+  }
+  post {
+    always {
+      script {
+        sh "docker stop dependencies | true"
+        sh "docker stop rules | true"
       }
     }
   }
