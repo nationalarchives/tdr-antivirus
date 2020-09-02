@@ -18,7 +18,7 @@ def matcher_lambda_handler(event, lambda_context):
     if "Records" in event:
         sqs_client = boto3.client("sqs")
         s3_client = boto3.client("s3")
-        for record in event["Records"]:            
+        for record in event["Records"]:
             message = json.loads(record['body'])['Message']
             s3_records = json.loads(message)['Records']
             for s3_record in s3_records:
