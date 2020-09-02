@@ -4,6 +4,7 @@ This is the code and configuration to carry out the antivirus checks on a single
 
 There will be a task to automatically build the virus definitions into the lambda but for now it's a manual process.
 First, set $MANAGEMENT_ACCOUNT, STAGE and $YARA_VERSION. Current version as I write this is 4.0.0
+
 ```
 export MANAGEMENT_ACCOUNT=managementaccount
 export YARA_VERSION=4.0.0
@@ -19,7 +20,7 @@ Build the dependencies image
 
 Build the rules file container
 
-`docker build -f Dockerfile-compile -t yara-rules --build-arg STAGE=$STAGE --build-arg ACCOUNT_NUMBER=$MANAGEMENT_ACCOUNT .`
+`docker build -f Dockerfile-compile -t $MANAGEMENT_ACCOUNT.dkr.ecr.eu-west-2.amazonaws.com/yara-rules --build-arg STAGE=$STAGE --build-arg ACCOUNT_NUMBER=$MANAGEMENT_ACCOUNT .`
 
 Run the dependencies container
 
@@ -49,7 +50,7 @@ Copy the matcher file to the lambda directory
 
 `cp src/matcher.py ./lambda`
 
-Enter the lambda directory 
+Enter the lambda directory
 
 `cd lambda`
 
@@ -65,11 +66,12 @@ Update the lambda function in the environment account. You will need credentials
 
 `aws lambda update-function-code --function-name tdr-yara-av-$STAGE --s3-bucket tdr-backend-checks-$STAGE --s3-key yara-av.zip`
 
-Publish a new lambda version. This is how we keep track of the database version 
+Publish a new lambda version. This is how we keep track of the database version
 
 `aws lambda publish-version --function-name tdr-yara-av-$STAGE`
 
 Clean up
+
 ```
 cd ..
 rm -rf lambda dependencies.zip
@@ -77,6 +79,7 @@ docker stop rules dependencies
 ```
 
 ## Running locally
+
 Create a virtual environment in the antivirus directory
 `python3 -m venv venv`
 
@@ -88,7 +91,7 @@ Install dependencies
 
 `pip install -r requirements.txt`
 
-To run it, you will need to add code to the matcher.py file at the bottom. 
+To run it, you will need to add code to the matcher.py file at the bottom.
 
 ```python
 matcher_lambda_handler({
@@ -109,11 +112,11 @@ matcher_lambda_handler({
 
 This is the minimum json you need but you can experiment with more records and different keys
 
-Then either run this through the cli 
+Then either run this through the cli
 
 `python src/matcher.py`
 
-or debug through Pycharm or the IDE of your choice. 
+or debug through Pycharm or the IDE of your choice.
 
 The following environment variables need to be set for this to work although the AWS ones are optional if you're using profiles.
 AWS_ACCESS_KEY_ID
@@ -121,8 +124,8 @@ AWS_SECRET_ACCESS_KEY
 AWS_SESSION_TOKEN
 
 AWS_LAMBDA_FUNCTION_VERSION - This is the lambda function version. It's provided by the lambda and so needs to be set here. Set it to "$LATEST"
-SQS_URL - This is the queue for the api updates. It's https://sqs.eu-west-2.amazonaws.com/${account_number}/tdr-api-update-$STAGE
-ENVIRONMENT - intg, staging or prod 
+SQS_URL - This is the queue for the api updates. It's https://sqs.eu-west-2.amazonaws.com/${account_number}/tdr-api-update-\$STAGE
+ENVIRONMENT - intg, staging or prod
 
 ## Running the tests
 
@@ -133,5 +136,3 @@ Run with coverage `python -m pytest --cov=src`
 Run with coverage and missing lines `python -m pytest --cov-report term-missing --cov=src`
 
 Run with coverage, missing lines and junit output `python -m pytest --cov-report term-missing --junitxml="result.xml" --cov=src`
-
- 
