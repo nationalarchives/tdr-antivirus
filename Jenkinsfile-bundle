@@ -1,0 +1,69 @@
+library("tdr-jenkinslib")
+
+def versionTag = "v${env.BUILD_NUMBER}"
+
+pipeline {
+  agent {
+    label "master"
+  }
+  parameters {
+    text(name: "BUILD_IMAGE_TAG", defaultValue: "latest", description: "The image tag for the base yara images")
+  }
+  stages {
+    stage("Build zip file") {
+      steps {
+        script {
+          sh "aws ecr get-login --region eu-west-2 --no-include-email | bash"
+          sh "docker run -itd --rm --name dependencies ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-dependencies:${params.BUILD_IMAGE_TAG}"
+          sh "docker cp dependencies:/lambda/dependencies.zip ."
+          sh "docker run -itd --rm --name rules ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-rules:${params.BUILD_IMAGE_TAG}"
+          sh "mkdir lambda"
+          sh "docker cp rules:/rules/output ./lambda"
+          sh "unzip -q dependencies.zip -d ./lambda"
+          sh "cp src/matcher.py ./lambda"
+          dir("lambda") {
+            sh "zip -r9 function.zip ."
+            stash includes: "function.zip", name: "function.zip"
+          }
+        }
+      }
+    }
+    stage("Upload function") {
+      agent {
+        ecs {
+          inheritFrom "aws"
+          taskrole "arn:aws:iam::${env.MANAGEMENT_ACCOUNT}:role/TDRJenkinsNodeLambdaRoleIntg"
+        }
+      }
+      steps {
+        script {
+          unstash "function.zip"
+          sh "aws s3 cp function.zip s3://tdr-backend-code-mgmt/${versionTag}/yara-av.zip"
+
+          tdr.configureJenkinsGitUser()
+
+          sh "git tag ${versionTag}"
+          sh "git checkout master"
+
+          tdr.pushGitHubBranch("master")
+
+          build(
+              job: "TDR Antivirus Deploy",
+              parameters: [
+                  string(name: "STAGE", value: "intg"),
+                  string(name: "TO_DEPLOY", value: versionTag)
+              ],
+              wait: false)
+        }
+      }
+    }
+  }
+  post {
+    always {
+      script {
+        sh "docker stop dependencies | true"
+        sh "docker stop rules | true"
+      }
+    }
+  }
+}

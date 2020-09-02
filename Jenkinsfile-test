@@ -1,0 +1,59 @@
+library("tdr-jenkinslib")
+
+def repo = "tdr-antivirus"
+
+pipeline {
+  agent {
+    label "master"
+  }
+  stages {
+    stage("Run git secrets") {
+      steps {
+        script {
+          tdr.runGitSecrets(repo)
+        }
+      }
+    }
+    stage('Run tests') {
+      agent {
+        ecs {
+          inheritFrom "aws"
+          taskrole "arn:aws:iam::${env.MANAGEMENT_ACCOUNT}:role/TDRJenkinsNodeLambdaRoleIntg"
+        }
+      }
+      steps {
+        script {
+          sh "pip install -r requirements.txt"
+          sh "python -m pytest"
+        }
+      }
+    }
+
+    stage("Deploy to integration") {
+      when {
+        expression { env.BRANCH_NAME == "master"}
+      }
+      steps {
+        build(
+            job: "TDR Antivirus Bundle",
+            parameters: [
+                string(name: "BUILD_IMAGE_TAG", value: "latest")
+            ],
+            wait: false)
+      }
+
+    }
+  }
+  post {
+    failure {
+      script {
+        tdr.reportFailedBuildToGitHub(repo, env.GIT_COMMIT)
+      }
+    }
+    success {
+      script {
+        tdr.reportSuccessfulBuildToGitHub(repo, env.GIT_COMMIT)
+      }
+    }
+  }
+}

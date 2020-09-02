@@ -1,0 +1,53 @@
+
+library("tdr-jenkinslib")
+
+def versionTag = "v${env.BUILD_NUMBER}"
+def repo = "tdr-antivirus"
+def yaraVersion = "4.0.0"
+def imageAccount = "${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com"
+
+pipeline {
+  agent {
+    label "master"
+  }
+  stages {
+    stage('Build and push yara docker images') {
+      steps {
+        script {
+          sh "docker build -f Dockerfile-yara --build-arg YARA_VERSION=${yaraVersion} -t ${imageAccount}/yara:${versionTag} ."
+          sh "docker build -f Dockerfile-dependencies --build-arg YARA_VERSION=${yaraVersion} -t ${imageAccount}/yara-dependencies:${versionTag} ."
+          sh "docker build -f Dockerfile-compile -t ${imageAccount}/yara-rules:${versionTag} --build-arg ACCOUNT_NUMBER=${env.MANAGEMENT_ACCOUNT} --build-arg VERSION=${versionTag} ."
+          sh "aws ecr get-login --region eu-west-2 --no-include-email | bash"
+          sh "docker push ${imageAccount}/yara:${versionTag}"
+          sh "docker push ${imageAccount}/yara-dependencies:${versionTag}"
+          sh "docker push ${imageAccount}/yara-rules:${versionTag}"
+          sh "docker tag ${imageAccount}/yara:${versionTag} ${imageAccount}/yara:latest"
+          sh "docker tag ${imageAccount}/yara-dependencies:${versionTag} ${imageAccount}/yara-dependencies:latest"
+          sh "docker tag ${imageAccount}/yara-rules:${versionTag} ${imageAccount}/yara-rules:latest"
+          sh "docker push ${imageAccount}/yara:latest"
+          sh "docker push ${imageAccount}/yara-dependencies:latest"
+          sh "docker push ${imageAccount}/yara-rules:latest"
+          build(
+              job: "TDR Antivirus Bundle",
+              parameters: [
+                  string(name: "BUILD_IMAGE_TAG", value: "latest")
+              ],
+              wait: false)
+      }
+    }
+  }
+}
+post {
+  failure {
+    script {
+      tdr.reportFailedBuildToGitHub(repo, env.GIT_COMMIT)
+    }
+  }
+  success {
+    script {
+      tdr.reportSuccessfulBuildToGitHub(repo, env.GIT_COMMIT)
+    }
+  }
+}
+}
+
