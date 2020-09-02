@@ -12,14 +12,13 @@ logging.basicConfig(format=FORMAT)
 logger = logging.getLogger('matcher')
 logger.setLevel(INFO)
 
-
-def matcher_lambda_handler(event, lambda_context):
+def matcher_lambda_handler(event, lambda_context):    
     print(event)
     outputs = []
     if "Records" in event:
         sqs_client = boto3.client("sqs")
         s3_client = boto3.client("s3")
-        for record in event["Records"]:
+        for record in event["Records"]:            
             message = json.loads(record['body'])['Message']
             s3_records = json.loads(message)['Records']
             for s3_record in s3_records:
@@ -40,10 +39,14 @@ def matcher_lambda_handler(event, lambda_context):
                     "Bucket": bucket,
                     "Key": key
                 }
+
+                # removes the cognito id from the key
+                clean_bucket_key = key.split("/", 1)[1]         
+
                 if len(results) > 0:
                     s3_client.copy(copy_source, "tdr-upload-files-quarantine-" + os.environ["ENVIRONMENT"], key)
                 else:
-                    s3_client.copy(copy_source, "tdr-upload-files-" + os.environ["ENVIRONMENT"], key)
+                    s3_client.copy(copy_source, "tdr-upload-files-" + os.environ["ENVIRONMENT"], clean_bucket_key)
 
                 result = "\n".join(results)
                 time = int(datetime.today().replace(tzinfo=timezone.utc).timestamp()) * 1000

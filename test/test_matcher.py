@@ -88,7 +88,8 @@ def get_records(bucket, key, num=1):
         ]
     }
 
-
+tdr_standard_dirty_key = "cognitoId/consignmentId/fileId"
+tdr_standard_clean_key = "consignmentId/fileId"
 
 def test_load_is_called(s3, sqs, mocker):
     os.environ["ENVIRONMENT"] = "intg"
@@ -97,10 +98,10 @@ def test_load_is_called(s3, sqs, mocker):
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='testbucket')
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg')
-    s3.Object("testbucket", "test0").put(Body="test")
+    s3.Object("testbucket", f"{tdr_standard_dirty_key}0").put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
-    matcher.matcher_lambda_handler(get_records("testbucket", "test"), None)
+    matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key), None)
     yara.load.assert_called_once_with("output")
 
 
@@ -111,10 +112,10 @@ def test_correct_output(s3, sqs, mocker):
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='testbucket')
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg')
-    s3.Object("testbucket", "test0").put(Body="test")
+    s3.Object("testbucket", f"{tdr_standard_dirty_key}0").put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
-    res = matcher.matcher_lambda_handler(get_records("testbucket", "test"), None)
+    res = matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key), None)
 
     assert res[0]["software"] == "yara"
     assert res[0]["softwareVersion"] == yara.__version__
@@ -161,11 +162,11 @@ def test_match_found(s3, sqs, mocker):
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='testbucket')
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg')
-    s3.Object("testbucket", "test0").put(Body="test")
+    s3.Object("testbucket", f"{tdr_standard_dirty_key}0").put(Body="test")
     mocker.patch('yara.load')
 
     yara.load.return_value = MockRulesMatchFound()
-    res = matcher.matcher_lambda_handler(get_records("testbucket", "test"), None)
+    res = matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key), None)
 
     assert res[0]["result"] == "testmatch"
 
@@ -177,10 +178,10 @@ def test_no_match_found(s3, sqs, mocker):
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='testbucket')
     s3.create_bucket(Bucket='tdr-upload-files-intg')
-    s3.Object("testbucket", "test0").put(Body="test")
+    s3.Object("testbucket", f"{tdr_standard_dirty_key}0").put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesNoMatch()
-    res = matcher.matcher_lambda_handler(get_records("testbucket", "test"), None)
+    res = matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key), None)
     assert res[0]["result"] == ""
 
 
@@ -191,10 +192,10 @@ def test_multiple_match_found(s3, sqs, mocker):
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='testbucket')
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg')
-    s3.Object("testbucket", "test0").put(Body="test")
+    s3.Object("testbucket", f"{tdr_standard_dirty_key}0").put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMultipleMatchFound()
-    res = matcher.matcher_lambda_handler(get_records("testbucket", "test"), None)
+    res = matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key), None)
     assert res[0]["result"] == "testmatch\ntestmatch"
 
 
@@ -205,11 +206,11 @@ def test_multiple_records(s3, sqs, mocker):
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='testbucket')
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg')
-    s3.Object("testbucket", "test0").put(Body="test")
-    s3.Object("testbucket", "test1").put(Body="test")
+    s3.Object("testbucket", f"{tdr_standard_dirty_key}0").put(Body="test")
+    s3.Object("testbucket", f"{tdr_standard_dirty_key}1").put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
-    res = matcher.matcher_lambda_handler(get_records("testbucket", "test", 2), None)
+    res = matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key, 2), None)
     assert len(res) == 2
     assert res[0]["result"] == "testmatch"
     assert res[1]["result"] == "testmatch"
@@ -269,10 +270,10 @@ def test_output_sent_to_queue(s3, sqs, mocker):
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='testbucket')
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg')
-    s3.Object("testbucket", "test0").put(Body="test")
+    s3.Object("testbucket", f"{tdr_standard_dirty_key}0").put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
-    matcher.matcher_lambda_handler(get_records("testbucket", "test"), None)
+    matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key), None)
     res = sqs.receive_message(QueueUrl=queue_url)
     print(res["Messages"])
     assert len(res["Messages"]) == 1
@@ -286,11 +287,11 @@ def test_output_sent_to_queue_multiple_records(s3, sqs, mocker):
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='testbucket')
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg')
-    s3.Object("testbucket", "test0").put(Body="test")
-    s3.Object("testbucket", "test1").put(Body="test")
+    s3.Object("testbucket", f"{tdr_standard_dirty_key}0").put(Body="test")
+    s3.Object("testbucket", f"{tdr_standard_dirty_key}1").put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
-    matcher.matcher_lambda_handler(get_records("testbucket", "test", 2), None)
+    matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key, 2), None)
     res = sqs.receive_message(QueueUrl=queue_url, MaxNumberOfMessages=10)
     messages = res["Messages"]
     assert len(messages) == 2
@@ -305,11 +306,11 @@ def test_copy_to_quarantine(s3, sqs, s3_client, mocker):
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='testbucket')
     s3.create_bucket(Bucket=quarantine)
-    s3.Object("testbucket", "test0").put(Body="test")
+    s3.Object("testbucket", f"{tdr_standard_dirty_key}0").put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
-    matcher.matcher_lambda_handler(get_records("testbucket", "test"), None)
-    res = s3_client.get_object(Bucket=quarantine, Key="test0")
+    matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key), None)
+    res = s3_client.get_object(Bucket=quarantine, Key=f"{tdr_standard_dirty_key}0")
     assert res["Body"].read() == b"test"
 
 
@@ -324,11 +325,11 @@ def test_no_copy_to_quarantine_clean(s3, sqs, s3_client, mocker):
         s3.create_bucket(Bucket='testbucket')
         s3.create_bucket(Bucket=quarantine)
         s3.create_bucket(Bucket='tdr-upload-files-intg')
-        s3.Object("testbucket", "test0").put(Body="test")
+        s3.Object("testbucket", f"{tdr_standard_dirty_key}0").put(Body="test")
         mocker.patch('yara.load')
         yara.load.return_value = MockRulesNoMatch()
-        matcher.matcher_lambda_handler(get_records("testbucket", "test"), None)
-        s3_client.get_object(Bucket=quarantine, Key="test0")
+        matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key), None)
+        s3_client.get_object(Bucket=quarantine, Key=f"{tdr_standard_dirty_key}0")
 
 
 def test_copy_to_clean_bucket(s3, sqs, s3_client, mocker):
@@ -340,11 +341,11 @@ def test_copy_to_clean_bucket(s3, sqs, s3_client, mocker):
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='testbucket')
     s3.create_bucket(Bucket=clean)
-    s3.Object("testbucket", "test0").put(Body="test")
+    s3.Object("testbucket", f"{tdr_standard_dirty_key}0").put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesNoMatch()
-    matcher.matcher_lambda_handler(get_records("testbucket", "test"), None)
-    res = s3_client.get_object(Bucket=clean, Key="test0")
+    matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key), None)
+    res = s3_client.get_object(Bucket=clean, Key=f"{tdr_standard_clean_key}0")    
     assert res["Body"].read() == b"test"
 
 
@@ -359,8 +360,8 @@ def test_no_copy_to_clean_with_match(s3, sqs, s3_client, mocker):
         s3.create_bucket(Bucket='testbucket')
         s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg')
         s3.create_bucket(Bucket=clean)
-        s3.Object("testbucket", "test0").put(Body="test")
+        s3.Object("testbucket", f"{tdr_standard_dirty_key}0").put(Body="test")
         mocker.patch('yara.load')
         yara.load.return_value = MockRulesMatchFound()
-        matcher.matcher_lambda_handler(get_records("testbucket", "test"), None)
-        s3_client.get_object(Bucket=clean, Key="test0")
+        matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key), None)
+        s3_client.get_object(Bucket=clean, Key=f"{tdr_standard_clean_key}0")
