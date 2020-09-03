@@ -40,10 +40,14 @@ def matcher_lambda_handler(event, lambda_context):
                     "Bucket": bucket,
                     "Key": key
                 }
+
+                # removes the cognito id from the key
+                clean_bucket_key = key.split("/", 1)[1]         
+
                 if len(results) > 0:
                     s3_client.copy(copy_source, "tdr-upload-files-quarantine-" + os.environ["ENVIRONMENT"], key)
                 else:
-                    s3_client.copy(copy_source, "tdr-upload-files-" + os.environ["ENVIRONMENT"], key)
+                    s3_client.copy(copy_source, "tdr-upload-files-" + os.environ["ENVIRONMENT"], clean_bucket_key)
 
                 result = "\n".join(results)
                 time = int(datetime.today().replace(tzinfo=timezone.utc).timestamp()) * 1000
@@ -51,7 +55,7 @@ def matcher_lambda_handler(event, lambda_context):
                           "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
                           "result": result,
                           "datetime": time,
-                          "fileId": key.split("/")[-1] }
+                          "fileId": key.split("/")[-1]}
                 outputs.append(output)
                 sqs_client.send_message(QueueUrl=os.environ["SQS_URL"], MessageBody=json.dumps(output))
                 logger.info("Key %s processed", key)
