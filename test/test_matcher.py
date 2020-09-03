@@ -81,15 +81,17 @@ def get_records(bucket, key, num=1):
         "Records": records
     })
     return {
-        "Records" : [
+        "Records": [
             {
-                "body" : json.dumps({"Message": message})
+                "body": json.dumps({"Message": message})
             }
         ]
     }
 
+
 tdr_standard_dirty_key = "cognitoId/consignmentId/fileId"
 tdr_standard_clean_key = "consignmentId/fileId"
+
 
 def test_load_is_called(s3, sqs, mocker):
     os.environ["ENVIRONMENT"] = "intg"
