@@ -12,7 +12,8 @@ logging.basicConfig(format=FORMAT)
 logger = logging.getLogger('matcher')
 logger.setLevel(INFO)
 
-def matcher_lambda_handler(event, lambda_context):    
+
+def matcher_lambda_handler(event, lambda_context):
     print(event)
     outputs = []
     if "Records" in event:
