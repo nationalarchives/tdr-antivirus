@@ -220,7 +220,6 @@ def test_multiple_records(s3, sqs, mocker):
     assert res[1]["result"] == "testmatch"
 
 
-@mock_s3
 def test_bucket_not_found(s3, s3_client, sqs, mocker):
     with pytest.raises(ClientError) as err:
         os.environ["ENVIRONMENT"] = "intg"
