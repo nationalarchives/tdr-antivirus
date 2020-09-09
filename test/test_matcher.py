@@ -5,6 +5,7 @@ import os
 from src import matcher
 import yara
 import json
+from botocore.errorfactory import ClientError
 
 
 @pytest.fixture(scope='function')
@@ -219,8 +220,9 @@ def test_multiple_records(s3, sqs, mocker):
     assert res[1]["result"] == "testmatch"
 
 
-def test_bucket_not_found(s3, sqs, mocker):
-    with pytest.raises(s3.meta.client.exceptions.NoSuchBucket):
+@mock_s3
+def test_bucket_not_found(s3, s3_client, sqs, mocker):
+    with pytest.raises(ClientError) as err:
         os.environ["ENVIRONMENT"] = "intg"
         os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
         os.environ["SQS_URL"] = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
@@ -231,10 +233,11 @@ def test_bucket_not_found(s3, sqs, mocker):
         mocker.patch('yara.load')
         yara.load.return_value = MockRulesNoMatch()
         matcher.matcher_lambda_handler(get_records("anotherbucket", "another_test"), None)
+    assert err.typename == 'NoSuchBucket'
 
 
 def test_key_not_found(s3, sqs, mocker):
-    with pytest.raises(s3.meta.client.exceptions.NoSuchKey):
+    with pytest.raises(ClientError) as err:
         os.environ["ENVIRONMENT"] = "intg"
         os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
         os.environ["SQS_URL"] = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
@@ -245,6 +248,7 @@ def test_key_not_found(s3, sqs, mocker):
         mocker.patch('yara.load')
         yara.load.return_value = MockRulesNoMatch()
         matcher.matcher_lambda_handler(get_records("testbucket", "another_test"), None)
+    assert err.typename == 'NoSuchKey'
 
 
 def test_match_fails(s3, sqs, mocker):
@@ -318,7 +322,7 @@ def test_copy_to_quarantine(s3, sqs, s3_client, mocker):
 
 
 def test_no_copy_to_quarantine_clean(s3, sqs, s3_client, mocker):
-    with pytest.raises(s3.meta.client.exceptions.NoSuchKey):
+    with pytest.raises(ClientError) as err:
         os.environ["ENVIRONMENT"] = "intg"
         os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
         queue_url = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
@@ -333,6 +337,7 @@ def test_no_copy_to_quarantine_clean(s3, sqs, s3_client, mocker):
         yara.load.return_value = MockRulesNoMatch()
         matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key), None)
         s3_client.get_object(Bucket=quarantine, Key=f"{tdr_standard_dirty_key}0")
+    assert err.typename == 'NoSuchKey'
 
 
 def test_copy_to_clean_bucket(s3, sqs, s3_client, mocker):
@@ -353,7 +358,7 @@ def test_copy_to_clean_bucket(s3, sqs, s3_client, mocker):
 
 
 def test_no_copy_to_clean_with_match(s3, sqs, s3_client, mocker):
-    with pytest.raises(s3.meta.client.exceptions.NoSuchKey):
+    with pytest.raises(ClientError) as err:
         os.environ["ENVIRONMENT"] = "intg"
         os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
         queue_url = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
@@ -368,3 +373,4 @@ def test_no_copy_to_clean_with_match(s3, sqs, s3_client, mocker):
         yara.load.return_value = MockRulesMatchFound()
         matcher.matcher_lambda_handler(get_records("testbucket", tdr_standard_dirty_key), None)
         s3_client.get_object(Bucket=clean, Key=f"{tdr_standard_clean_key}0")
+    assert err.typename == 'NoSuchKey'
