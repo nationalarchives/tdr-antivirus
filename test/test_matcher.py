@@ -16,7 +16,6 @@ def aws_credentials():
     os.environ['AWS_SECURITY_TOKEN'] = 'testing'
     os.environ['AWS_SESSION_TOKEN'] = 'testing'
 
-
 @pytest.fixture(scope='function')
 def s3(aws_credentials):
     with mock_s3():
@@ -90,13 +89,18 @@ def get_records(num=1):
 tdr_standard_dirty_key = "cognitoId/consignmentId/fileId"
 tdr_standard_clean_key = "consignmentId/fileId"
 location = {'LocationConstraint': 'eu-west-2'}
+output_queue_url = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
+
+
+def set_environment():
+    os.environ["ENVIRONMENT"] = "intg"
+    os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
+    os.environ["OUTPUT_QUEUE"] = output_queue_url
+    os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
 
 
 def test_load_is_called(s3, sqs, mocker):
-    os.environ["ENVIRONMENT"] = "intg"
-    os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-    os.environ["OUTPUT_QUEUE"] = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-    os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
+    set_environment()
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg', CreateBucketConfiguration=location)
@@ -108,10 +112,7 @@ def test_load_is_called(s3, sqs, mocker):
 
 
 def test_correct_output(s3, sqs, mocker):
-    os.environ["ENVIRONMENT"] = "intg"
-    os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-    os.environ["OUTPUT_QUEUE"] = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-    os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
+    set_environment()
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg', CreateBucketConfiguration=location)
@@ -126,10 +127,7 @@ def test_correct_output(s3, sqs, mocker):
 
 
 def test_correct_file_id_provided(s3, sqs, mocker):
-    os.environ["ENVIRONMENT"] = "intg"
-    os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-    os.environ["OUTPUT_QUEUE"] = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-    os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
+    set_environment()
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg', CreateBucketConfiguration=location)
@@ -142,10 +140,7 @@ def test_correct_file_id_provided(s3, sqs, mocker):
 
 
 def test_match_found(s3, sqs, mocker):
-    os.environ["ENVIRONMENT"] = "intg"
-    os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-    os.environ["OUTPUT_QUEUE"] = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-    os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
+    set_environment()
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg', CreateBucketConfiguration=location)
@@ -159,10 +154,7 @@ def test_match_found(s3, sqs, mocker):
 
 
 def test_no_match_found(s3, sqs, mocker):
-    os.environ["ENVIRONMENT"] = "intg"
-    os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-    os.environ["OUTPUT_QUEUE"] = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-    os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
+    set_environment()
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
     s3.create_bucket(Bucket='tdr-upload-files-intg', CreateBucketConfiguration=location)
@@ -174,10 +166,7 @@ def test_no_match_found(s3, sqs, mocker):
 
 
 def test_multiple_match_found(s3, sqs, mocker):
-    os.environ["ENVIRONMENT"] = "intg"
-    os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-    os.environ["OUTPUT_QUEUE"] = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-    os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
+    set_environment()
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg', CreateBucketConfiguration=location)
@@ -189,10 +178,7 @@ def test_multiple_match_found(s3, sqs, mocker):
 
 
 def test_multiple_records(s3, sqs, mocker):
-    os.environ["ENVIRONMENT"] = "intg"
-    os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-    os.environ["OUTPUT_QUEUE"] = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-    os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
+    set_environment()
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg', CreateBucketConfiguration=location)
@@ -208,10 +194,7 @@ def test_multiple_records(s3, sqs, mocker):
 
 def test_bucket_not_found(s3, s3_client, sqs, mocker):
     with pytest.raises(ClientError) as err:
-        os.environ["ENVIRONMENT"] = "intg"
-        os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-        os.environ["OUTPUT_QUEUE"] = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-        os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
+        set_environment()
         sqs.create_queue(QueueName="tdr-api-update-intg")
         s3.create_bucket(Bucket='anotherbucket', CreateBucketConfiguration=location)
         s3.create_bucket(Bucket='tdr-upload-files-intg', CreateBucketConfiguration=location)
@@ -224,10 +207,7 @@ def test_bucket_not_found(s3, s3_client, sqs, mocker):
 
 def test_key_not_found(s3, sqs, mocker):
     with pytest.raises(ClientError) as err:
-        os.environ["ENVIRONMENT"] = "intg"
-        os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-        os.environ["OUTPUT_QUEUE"] = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-        os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
+        set_environment()
         sqs.create_queue(QueueName="tdr-api-update-intg")
         s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
         s3.create_bucket(Bucket='tdr-upload-files-intg', CreateBucketConfiguration=location)
@@ -240,10 +220,7 @@ def test_key_not_found(s3, sqs, mocker):
 
 def test_match_fails(s3, sqs, mocker):
     with pytest.raises(yara.Error):
-        os.environ["ENVIRONMENT"] = "intg"
-        os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-        os.environ["OUTPUT_QUEUE"] = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-        os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
+        set_environment()
         sqs.create_queue(QueueName="tdr-api-update-intg")
         s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
         s3.Object("tdr-upload-files-dirty-intg", "test0").put(Body="test")
@@ -258,11 +235,7 @@ def test_no_records():
 
 
 def test_output_sent_to_queue(s3, sqs, mocker):
-    os.environ["ENVIRONMENT"] = "intg"
-    os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-    os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
-    queue_url = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-    os.environ["OUTPUT_QUEUE"] = queue_url
+    set_environment()
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg', CreateBucketConfiguration=location)
@@ -270,17 +243,13 @@ def test_output_sent_to_queue(s3, sqs, mocker):
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
     matcher.matcher_lambda_handler(get_records(), None)
-    res = sqs.receive_message(QueueUrl=queue_url)
+    res = sqs.receive_message(QueueUrl=output_queue_url)
     print(res["Messages"])
     assert len(res["Messages"]) == 1
 
 
 def test_output_sent_to_queue_multiple_records(s3, sqs, mocker):
-    os.environ["ENVIRONMENT"] = "intg"
-    os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-    os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
-    queue_url = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-    os.environ["OUTPUT_QUEUE"] = queue_url
+    set_environment()
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
     s3.create_bucket(Bucket='tdr-upload-files-quarantine-intg', CreateBucketConfiguration=location)
@@ -289,17 +258,13 @@ def test_output_sent_to_queue_multiple_records(s3, sqs, mocker):
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
     matcher.matcher_lambda_handler(get_records(2), None)
-    res = sqs.receive_message(QueueUrl=queue_url, MaxNumberOfMessages=10)
+    res = sqs.receive_message(QueueUrl=output_queue_url, MaxNumberOfMessages=10)
     messages = res["Messages"]
     assert len(messages) == 2
 
 
 def test_copy_to_quarantine(s3, sqs, s3_client, mocker):
-    os.environ["ENVIRONMENT"] = "intg"
-    os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-    os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
-    queue_url = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-    os.environ["OUTPUT_QUEUE"] = queue_url
+    set_environment()
     quarantine = 'tdr-upload-files-quarantine-intg'
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
@@ -314,11 +279,7 @@ def test_copy_to_quarantine(s3, sqs, s3_client, mocker):
 
 def test_no_copy_to_quarantine_clean(s3, sqs, s3_client, mocker):
     with pytest.raises(ClientError) as err:
-        os.environ["ENVIRONMENT"] = "intg"
-        os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-        queue_url = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-        os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
-        os.environ["OUTPUT_QUEUE"] = queue_url
+        set_environment()
         quarantine = 'tdr-upload-files-quarantine-intg'
         sqs.create_queue(QueueName="tdr-api-update-intg")
         s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
@@ -333,11 +294,7 @@ def test_no_copy_to_quarantine_clean(s3, sqs, s3_client, mocker):
 
 
 def test_copy_to_clean_bucket(s3, sqs, s3_client, mocker):
-    os.environ["ENVIRONMENT"] = "intg"
-    os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-    os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
-    queue_url = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-    os.environ["OUTPUT_QUEUE"] = queue_url
+    set_environment()
     clean = 'tdr-upload-files-intg'
     sqs.create_queue(QueueName="tdr-api-update-intg")
     s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
@@ -352,11 +309,7 @@ def test_copy_to_clean_bucket(s3, sqs, s3_client, mocker):
 
 def test_no_copy_to_clean_with_match(s3, sqs, s3_client, mocker):
     with pytest.raises(ClientError) as err:
-        os.environ["ENVIRONMENT"] = "intg"
-        os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-        os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
-        queue_url = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
-        os.environ["OUTPUT_QUEUE"] = queue_url
+        set_environment()
         clean = 'tdr-upload-files-intg'
         sqs.create_queue(QueueName="tdr-api-update-intg")
         s3.create_bucket(Bucket='tdr-upload-files-dirty-intg', CreateBucketConfiguration=location)
