@@ -20,44 +20,44 @@ def matcher_lambda_handler(event, lambda_context):
         sqs_client = boto3.client("sqs")
         rules = yara.load("output")
         efs_root_location = os.environ["ROOT_DIRECTORY"]
-        for record in event['Records']:
+        records = json.loads(event['Records'])
+        for record in records:
             message_body = json.loads(record['body'])
 
-            for efs_download_record in message_body:
-                cognito_id = efs_download_record['cognitoId']
-                consignment_id = efs_download_record["consignmentId"]
-                original_path = efs_download_record["originalPath"]
-                root_path = f"{efs_root_location}/{consignment_id}"
-                file_id = efs_download_record["fileId"]
-                match = rules.match(f"{root_path}/{original_path}")
-                results = [x.rule for x in match]
+            cognito_id = message_body['cognitoId']
+            consignment_id = message_body["consignmentId"]
+            original_path = message_body["originalPath"]
+            root_path = f"{efs_root_location}/{consignment_id}"
+            file_id = message_body["fileId"]
+            match = rules.match(f"{root_path}/{original_path}")
+            results = [x.rule for x in match]
 
-                original_s3_key = f"{cognito_id}/{consignment_id}/{file_id}"
+            original_s3_key = f"{cognito_id}/{consignment_id}/{file_id}"
 
-                copy_source = {
-                    "Bucket": "tdr-upload-files-dirty-" + os.environ["ENVIRONMENT"],
-                    "Key": original_s3_key
-                }
+            copy_source = {
+                "Bucket": "tdr-upload-files-dirty-" + os.environ["ENVIRONMENT"],
+                "Key": original_s3_key
+            }
 
-                if len(results) > 0:
-                    s3_client.copy(
-                        copy_source,
-                        "tdr-upload-files-quarantine-" + os.environ["ENVIRONMENT"],
-                        consignment_id
-                    )
-                else:
-                    s3_client.copy(copy_source, "tdr-upload-files-" + os.environ["ENVIRONMENT"], consignment_id)
+            if len(results) > 0:
+                s3_client.copy(
+                    copy_source,
+                    "tdr-upload-files-quarantine-" + os.environ["ENVIRONMENT"],
+                    consignment_id
+                )
+            else:
+                s3_client.copy(copy_source, "tdr-upload-files-" + os.environ["ENVIRONMENT"], consignment_id)
 
-                result = "\n".join(results)
-                time = int(datetime.today().replace(tzinfo=timezone.utc).timestamp()) * 1000
-                output = {"software": "yara", "softwareVersion": yara.__version__,
-                          "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
-                          "result": result,
-                          "datetime": time,
-                          "fileId": file_id}
-                outputs.append(output)
-                sqs_client.send_message(QueueUrl=os.environ["OUTPUT_QUEUE"], MessageBody=json.dumps(output))
-                logger.info("Key %s processed", f"{consignment_id}/{file_id}")
+            result = "\n".join(results)
+            time = int(datetime.today().replace(tzinfo=timezone.utc).timestamp()) * 1000
+            output = {"software": "yara", "softwareVersion": yara.__version__,
+                      "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
+                      "result": result,
+                      "datetime": time,
+                      "fileId": file_id}
+            outputs.append(output)
+            sqs_client.send_message(QueueUrl=os.environ["OUTPUT_QUEUE"], MessageBody=json.dumps(output))
+            logger.info("Key %s processed", f"{consignment_id}/{file_id}")
 
         return outputs
     else:

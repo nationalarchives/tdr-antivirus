@@ -69,21 +69,24 @@ class MockRulesMatchError:
 def get_records(num=1):
     records = []
     for i in range(num):
+        body = {
+            "cognitoId": "cognitoId",
+            "consignmentId": "consignmentId",
+            "fileId": "fileId" + str(i),
+            "originalPath": "original/path"
+        }
+
+        message = {
+            "body": json.dumps(body)
+        }
+
         records.append(
-            {
-                "cognitoId": "cognitoId",
-                "consignmentId": "consignmentId",
-                "fileId": "fileId" + str(i),
-                "originalPath": "original/path"
-            }
+            message
         )
     return {
-        "Records": [
-            {
-                "body": json.dumps(records)
-            }
-        ]
+        "Records": json.dumps(records)
     }
+
 
 output_sqs_queue = "tdr-api-update-intg"
 dirty_s3_bucket = 'tdr-upload-files-dirty-intg'

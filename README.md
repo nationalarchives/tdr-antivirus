@@ -97,18 +97,18 @@ To run it, you will need to add code to the matcher.py file at the bottom.
 matcher_lambda_handler({
   "Records": [
     {
-      "body": [{
+      "body": {
         "cognitoId": "cognitoId1234",
         "consignmentId": "bf2181c7-70e4-448d-b122-be561d0e797a",
         "fileId": "df216308-e78b-4328-90ef-8e4ebfef6b9d",
         "originalPath": "original/path"
-      }]
+      }
     }
   ]
 }, None)
 ```
 
-This is the minimum json you need but you can experiment with more records in the body element
+This is the minimum json you need but you can experiment with additional messages in the `Records` element
 
 Then either run this through the cli
 
