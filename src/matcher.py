@@ -20,17 +20,16 @@ def matcher_lambda_handler(event, lambda_context):
         sqs_client = boto3.client("sqs")
         rules = yara.load("output")
         efs_root_location = os.environ["ROOT_DIRECTORY"]
-        records = event['Records']
-        for record in records:
+        for record in event['Records']:
             message_body = json.loads(record['body'])
 
             for efs_download_record in message_body:
                 cognito_id = efs_download_record['cognitoId']
                 consignment_id = efs_download_record["consignmentId"]
                 original_path = efs_download_record["originalPath"]
-                consignment_path = f"${efs_root_location}/${consignment_id}"
+                root_path = f"{efs_root_location}/{consignment_id}"
                 file_id = efs_download_record["fileId"]
-                match = rules.match(f"${consignment_path}/${original_path}")
+                match = rules.match(f"{root_path}/{original_path}")
                 results = [x.rule for x in match]
 
                 original_s3_key = f"{cognito_id}/{consignment_id}/{file_id}"
@@ -58,7 +57,7 @@ def matcher_lambda_handler(event, lambda_context):
                           "fileId": file_id}
                 outputs.append(output)
                 sqs_client.send_message(QueueUrl=os.environ["OUTPUT_QUEUE"], MessageBody=json.dumps(output))
-                logger.info("Key %s processed", f"${consignment_id}/${file_id}")
+                logger.info("Key %s processed", f"{consignment_id}/{file_id}")
 
         return outputs
     else:
