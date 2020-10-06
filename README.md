@@ -97,20 +97,18 @@ To run it, you will need to add code to the matcher.py file at the bottom.
 matcher_lambda_handler({
   "Records": [
     {
-      "s3": {
-        "bucket": {
-          "name": "tdr-upload-files-dirty-staging"
-        },
-        "object": {
-          "key": "cognitoId-1234/bf2181c7-70e4-448d-b122-be561d0e797a"
-        }
-      }
+      "body": [{
+        "cognitoId": "cognitoId1234",
+        "consignmentId": "bf2181c7-70e4-448d-b122-be561d0e797a",
+        "fileId": "df216308-e78b-4328-90ef-8e4ebfef6b9d",
+        "originalPath": "original/path"
+      }]
     }
   ]
 }, None)
 ```
 
-This is the minimum json you need but you can experiment with more records and different keys
+This is the minimum json you need but you can experiment with more records in the body element
 
 Then either run this through the cli
 
