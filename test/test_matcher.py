@@ -84,7 +84,7 @@ def get_records(num=1):
             message
         )
     return {
-        "Records": json.dumps(records)
+        "Records": records
     }
 
 
