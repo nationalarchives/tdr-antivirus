@@ -4,6 +4,7 @@ import json
 import logging
 from datetime import datetime, timezone
 import os
+import urllib.parse
 
 FORMAT = '%(asctime)-15s %(message)s'
 INFO = 20
@@ -23,8 +24,7 @@ def matcher_lambda_handler(event, lambda_context):
         records = event['Records']
         for record in records:
             message_body = json.loads(record['body'])
-
-            cognito_id = message_body['cognitoId']
+            cognito_id = urllib.parse.unquote(message_body['cognitoId'])
             consignment_id = message_body["consignmentId"]
             original_path = message_body["originalPath"]
             root_path = f"{efs_root_location}/{consignment_id}"
