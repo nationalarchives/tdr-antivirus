@@ -70,7 +70,7 @@ def get_records(num=1):
     records = []
     for i in range(num):
         body = {
-            "cognitoId": "cognitoId",
+            "cognitoId": "region%3AcognitoId",
             "consignmentId": "consignmentId",
             "fileId": "fileId" + str(i),
             "originalPath": "original/path"
@@ -92,7 +92,7 @@ output_sqs_queue = "tdr-api-update-intg"
 dirty_s3_bucket = 'tdr-upload-files-dirty-intg'
 quarantine_s3_bucket = 'tdr-upload-files-quarantine-intg'
 clean_s3_bucket = 'tdr-upload-files-intg'
-tdr_standard_dirty_key = "cognitoId/consignmentId/fileId"
+tdr_standard_dirty_key = "region:cognitoId/consignmentId/fileId"
 tdr_standard_clean_key = "consignmentId/fileId"
 location = {'LocationConstraint': 'eu-west-2'}
 output_queue_url = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
