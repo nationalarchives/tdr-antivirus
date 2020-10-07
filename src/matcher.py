@@ -20,7 +20,7 @@ def matcher_lambda_handler(event, lambda_context):
         sqs_client = boto3.client("sqs")
         rules = yara.load("output")
         efs_root_location = os.environ["ROOT_DIRECTORY"]
-        records = json.loads(event['Records'])
+        records = event['Records']
         for record in records:
             message_body = json.loads(record['body'])
 
