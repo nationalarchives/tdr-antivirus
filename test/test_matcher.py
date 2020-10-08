@@ -93,7 +93,7 @@ dirty_s3_bucket = 'tdr-upload-files-dirty-intg'
 quarantine_s3_bucket = 'tdr-upload-files-quarantine-intg'
 clean_s3_bucket = 'tdr-upload-files-intg'
 tdr_standard_dirty_key = "region:cognitoId/consignmentId/fileId"
-tdr_standard_clean_key = "consignmentId/fileId"
+tdr_standard_copy_key = "consignmentId/fileId"
 location = {'LocationConstraint': 'eu-west-2'}
 output_queue_url = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
 
@@ -278,7 +278,7 @@ def test_copy_to_quarantine(s3, sqs, s3_client, mocker):
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
     matcher.matcher_lambda_handler(get_records(), None)
-    res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=f"consignmentId")
+    res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=f"{tdr_standard_copy_key}0")
     assert res["Body"].read() == b"test"
 
 
@@ -306,7 +306,7 @@ def test_copy_to_clean_bucket(s3, sqs, s3_client, mocker):
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesNoMatch()
     matcher.matcher_lambda_handler(get_records(), None)
-    res = s3_client.get_object(Bucket=clean_s3_bucket, Key="consignmentId")
+    res = s3_client.get_object(Bucket=clean_s3_bucket, Key=f"{tdr_standard_copy_key}0")
     assert res["Body"].read() == b"test"
 
 
@@ -321,5 +321,5 @@ def test_no_copy_to_clean_with_match(s3, sqs, s3_client, mocker):
         mocker.patch('yara.load')
         yara.load.return_value = MockRulesMatchFound()
         matcher.matcher_lambda_handler(get_records(), None)
-        s3_client.get_object(Bucket=clean_s3_bucket, Key=f"{tdr_standard_clean_key}0")
+        s3_client.get_object(Bucket=clean_s3_bucket, Key=f"{tdr_standard_copy_key}0")
     assert err.typename == 'NoSuchKey'
