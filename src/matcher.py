@@ -33,6 +33,7 @@ def matcher_lambda_handler(event, lambda_context):
             results = [x.rule for x in match]
 
             original_s3_key = f"{cognito_id}/{consignment_id}/{file_id}"
+            copy_s3_key = f"{consignment_id}/{file_id}"
 
             copy_source = {
                 "Bucket": "tdr-upload-files-dirty-" + os.environ["ENVIRONMENT"],
@@ -43,10 +44,10 @@ def matcher_lambda_handler(event, lambda_context):
                 s3_client.copy(
                     copy_source,
                     "tdr-upload-files-quarantine-" + os.environ["ENVIRONMENT"],
-                    consignment_id
+                    copy_s3_key
                 )
             else:
-                s3_client.copy(copy_source, "tdr-upload-files-" + os.environ["ENVIRONMENT"], consignment_id)
+                s3_client.copy(copy_source, "tdr-upload-files-" + os.environ["ENVIRONMENT"], copy_s3_key)
 
             result = "\n".join(results)
             time = int(datetime.today().replace(tzinfo=timezone.utc).timestamp()) * 1000
