@@ -4,7 +4,7 @@ FROM $ACCOUNT_NUMBER.dkr.ecr.eu-west-2.amazonaws.com/yara:$VERSION
 WORKDIR /rules
 COPY rule-sources /rules/rule-sources
 COPY src/compile.py /rules/compile.py
-RUN apt-get -y update && apt-get -y install python3-dev python3-pip wget && \
+RUN apk update && apk add py3-pip wget gcc python3-dev musl-dev git && \
             pip3 install yara-python && \
             cat rule-sources | xargs -n1 git clone && \
             wget https://raw.githubusercontent.com/Yara-Rules/rules/master/malware/MALW_Eicar.yar && \

@@ -1,7 +1,6 @@
-FROM ubuntu
+FROM alpine 
 ARG YARA_VERSION
-ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get -y update && apt-get -y install git automake libtool make gcc pkg-config bison flex && \
+RUN apk update && apk add openssl-dev jansson-dev build-base libc-dev file-dev automake autoconf libtool flex git bison && \
             git clone --recursive --branch v$YARA_VERSION https://github.com/VirusTotal/yara.git && \
             cd yara && \
             ./bootstrap.sh && \
