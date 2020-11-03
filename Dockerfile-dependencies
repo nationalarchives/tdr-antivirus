@@ -1,4 +1,5 @@
 FROM amazonlinux
+RUN yum update -y && yum upgrade -y
 COPY build-dependencies.sh .
 ARG YARA_VERSION
 RUN ./build-dependencies.sh $YARA_VERSION
