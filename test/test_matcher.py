@@ -95,7 +95,7 @@ clean_s3_bucket = 'tdr-upload-files-intg'
 tdr_standard_dirty_key = "region:cognitoId/consignmentId/fileId"
 tdr_standard_copy_key = "consignmentId/fileId"
 location = {'LocationConstraint': 'eu-west-2'}
-output_queue_url = "https://queue.amazonaws.com/123456789012/tdr-api-update-intg"
+output_queue_url = "https://queue.amazonaws.com/aws_account_number/tdr-api-update-intg"
 
 
 def set_environment():
