@@ -1,3 +1,4 @@
+
 This is the code and configuration to carry out the antivirus checks on a single file from S3
 
 ## Building the lambda function
