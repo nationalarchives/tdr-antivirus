@@ -1,5 +1,9 @@
 FROM amazonlinux
 RUN yum update -y && yum upgrade -y
+RUN yum -y install shadow-utils
+RUN useradd --system dependenciesuser
 COPY build-dependencies.sh .
 ARG YARA_VERSION
 RUN ./build-dependencies.sh $YARA_VERSION
+
+USER dependenciesuser
