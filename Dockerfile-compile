@@ -1,6 +1,7 @@
 ARG ACCOUNT_NUMBER
 ARG VERSION
 FROM $ACCOUNT_NUMBER.dkr.ecr.eu-west-2.amazonaws.com/yara:$VERSION
+USER root
 RUN addgroup --system compilegroup && adduser --system compileuser -G compilegroup
 WORKDIR /rules
 COPY rule-sources /rules/rule-sources
