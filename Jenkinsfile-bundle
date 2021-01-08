@@ -50,7 +50,7 @@ pipeline {
           build(
               job: "TDR Antivirus Deploy",
               parameters: [
-                  string(name: "STAGE", value: $STAGE),
+                  string(name: "STAGE", value: params.STAGE),
                   string(name: "TO_DEPLOY", value: versionTag)
               ],
               wait: false)
