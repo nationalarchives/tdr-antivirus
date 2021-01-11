@@ -7,16 +7,16 @@ pipeline {
     label "master"
   }
   parameters {
-    text(name: "BUILD_IMAGE_TAG", defaultValue: "latest", description: "The image tag for the base yara images")
+    choice(name: "STAGE", choices: ["intg", "staging", "prod"], description: "The stage you are deploying the migration lambda to")
   }
   stages {
     stage("Build zip file") {
       steps {
         script {
           sh "aws ecr get-login --region eu-west-2 --no-include-email | bash"
-          sh "docker run -itd --rm --name dependencies ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-dependencies:${params.BUILD_IMAGE_TAG}"
+          sh "docker run -itd --rm --name dependencies ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-dependencies:${params.STAGE}"
           sh "docker cp dependencies:/lambda/dependencies.zip ."
-          sh "docker run -itd --rm --name rules ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-rules:${params.BUILD_IMAGE_TAG}"
+          sh "docker run -itd --rm --name rules ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-rules:${params.STAGE}"
           sh "mkdir lambda"
           sh "docker cp rules:/rules/output ./lambda"
           sh "unzip -q dependencies.zip -d ./lambda"
@@ -50,7 +50,7 @@ pipeline {
           build(
               job: "TDR Antivirus Deploy",
               parameters: [
-                  string(name: "STAGE", value: "intg"),
+                  string(name: "STAGE", value: params.STAGE),
                   string(name: "TO_DEPLOY", value: versionTag)
               ],
               wait: false)

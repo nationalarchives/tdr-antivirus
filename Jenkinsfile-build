@@ -10,6 +10,9 @@ pipeline {
   agent {
     label "master"
   }
+  parameters {
+    choice(name: "STAGE", choices: ["intg", "staging", "prod"], description: "The stage you are deploying the migration lambda to")
+  }
   stages {
     stage('Build and push yara docker images') {
       steps {
@@ -21,16 +24,16 @@ pipeline {
           sh "docker push ${imageAccount}/yara:${versionTag}"
           sh "docker push ${imageAccount}/yara-dependencies:${versionTag}"
           sh "docker push ${imageAccount}/yara-rules:${versionTag}"
-          sh "docker tag ${imageAccount}/yara:${versionTag} ${imageAccount}/yara:latest"
-          sh "docker tag ${imageAccount}/yara-dependencies:${versionTag} ${imageAccount}/yara-dependencies:latest"
-          sh "docker tag ${imageAccount}/yara-rules:${versionTag} ${imageAccount}/yara-rules:latest"
-          sh "docker push ${imageAccount}/yara:latest"
-          sh "docker push ${imageAccount}/yara-dependencies:latest"
-          sh "docker push ${imageAccount}/yara-rules:latest"
+          sh "docker tag ${imageAccount}/yara:${versionTag} ${imageAccount}/yara:${params.STAGE}"
+          sh "docker tag ${imageAccount}/yara-dependencies:${versionTag} ${imageAccount}/yara-dependencies:${params.STAGE}"
+          sh "docker tag ${imageAccount}/yara-rules:${versionTag} ${imageAccount}/yara-rules:${params.STAGE}"
+          sh "docker push ${imageAccount}/yara:${params.STAGE}"
+          sh "docker push ${imageAccount}/yara-dependencies:${params.STAGE}"
+          sh "docker push ${imageAccount}/yara-rules:${params.STAGE}"
           build(
               job: "TDR Antivirus Bundle",
               parameters: [
-                  string(name: "BUILD_IMAGE_TAG", value: "latest")
+                  string(name: "BUILD_IMAGE_TAG", value: params.STAGE)
               ],
               wait: false)
       }
