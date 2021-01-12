@@ -2,81 +2,28 @@ This is the code and configuration to carry out the antivirus checks on a single
 
 ## Building the lambda function
 
-There will be a task to automatically build the virus definitions into the lambda but for now it's a manual process.
-First, set $MANAGEMENT_ACCOUNT, STAGE and $YARA_VERSION. Current version as I write this is 4.0.0
+The lambda function is built by Jenkins. There are four Jenkins jobs in four Jenkinsfiles.
 
-```
-export MANAGEMENT_ACCOUNT=managementaccount
-export YARA_VERSION=4.0.0
-export STAGE=intg
-```
+### Jenkinsfile-build
+There are three docker images that are used to build the lambda. 
 
-Build the base yara image
-`docker build -f Dockerfile-yara --build-arg YARA_VERSION=$YARA_VERSION -t $MANAGEMENT_ACCOUNT.dkr.ecr.eu-west-2.amazonaws.com/yara:$STAGE .`
+| File name               | Image Name        | Description                                                                                                               |
+|-------------------------|-------------------|---------------------------------------------------------------------------------------------------------------------------|
+| Dockerfile-yara         | yara              | Installs yara and some dependencies it needs like openssl on an alpine image.                                             |
+| Dockerfile-compile      | yara-rules        | Uses yara as the base image. Gets the yara rules from github and compiles them into a single file for yara to use         |
+| Dockerfile-dependencies | yara-dependencies | Installs necessary software on an amazon linux image and zips it up to be used by the lambda                              |
 
-Build the dependencies image
+The build job rebuilds all of these images. This isn't necessary most of the time because the dependency versions and yara version don't change that often and so this job is only ever run manually when we need to update the dependencies.
+The images are tagged with the jenkins build number and then tagged with the stage. This allows us to have different sets of dependencies for different stages. 
 
-`docker build -f Dockerfile-dependencies --build-arg YARA_VERSION=$YARA_VERSION -t $MANAGEMENT_ACCOUNT.dkr.ecr.eu-west-2.amazonaws.com/yara-dependencies:$STAGE .`
+### Jenkinsfile-test 
+This runs git secrets and runs the python tests. This is the standard multibranch pipeline job which runs on PRs and merge to master. If this runs on the master branch, it will trigger the bundle job.
 
-Build the rules file container
+### Jenkinsfile-bundle
+This creates the lambda zip using the stored docker images that were built using the Dockerfile-build job and the latest python code from the project. The zip is uploaded to s3 and the deploy job is triggered.  
 
-`docker build -f Dockerfile-compile -t $MANAGEMENT_ACCOUNT.dkr.ecr.eu-west-2.amazonaws.com/yara-rules --build-arg STAGE=$STAGE --build-arg ACCOUNT_NUMBER=$MANAGEMENT_ACCOUNT .`
-
-Run the dependencies container
-
-`docker run -itd --rm --name dependencies $MANAGEMENT_ACCOUNT.dkr.ecr.eu-west-2.amazonaws.com/yara-dependencies:$STAGE`
-
-Copy the dependencies zip locally
-
-`docker cp dependencies:/lambda/dependencies.zip .`
-
-Run the rules container
-
-`docker run -itd --rm --name rules yara-rules`
-
-Make a lambda directory
-
-`mkdir lambda`
-
-Copy the rules file into the lambda directory
-
-`docker cp rules:/rules/output ./lambda`
-
-Unzip the dependencies into the lambda directory
-
-`unzip -q dependencies.zip -d ./lambda`
-
-Copy the matcher file to the lambda directory
-
-`cp src/matcher.py ./lambda`
-
-Enter the lambda directory
-
-`cd lambda`
-
-Zip the contents
-
-`zip -r9 function.zip .`
-
-Upload to an S3 bucket
-
-`aws s3 cp function.zip s3://tdr-backend-code-mgmt/yara-av.zip`
-
-Update the lambda function in the environment account. You will need credentials for whichever environment you're deploying to
-
-`aws lambda update-function-code --function-name tdr-yara-av-$STAGE --s3-bucket tdr-backend-checks-$STAGE --s3-key yara-av.zip`
-
-Publish a new lambda version. This is how we keep track of the database version
-
-`aws lambda publish-version --function-name tdr-yara-av-$STAGE`
-
-Clean up
-
-```
-cd ..
-rm -rf lambda dependencies.zip
-docker stop rules dependencies
-```
+### Jenkinsfile-deploy
+This updates the lambda with the zip file from S3.
 
 ## Running locally
 
