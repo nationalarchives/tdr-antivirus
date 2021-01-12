@@ -17,9 +17,9 @@ pipeline {
     stage('Build and push yara docker images') {
       steps {
         script {
-          sh "docker build -f Dockerfile-yara --build-arg YARA_VERSION=${yaraVersion} -t ${imageAccount}/yara:${versionTag} ."
-          sh "docker build -f Dockerfile-dependencies --build-arg YARA_VERSION=${yaraVersion} -t ${imageAccount}/yara-dependencies:${versionTag} ."
-          sh "docker build -f Dockerfile-compile -t ${imageAccount}/yara-rules:${versionTag} --build-arg ACCOUNT_NUMBER=${env.MANAGEMENT_ACCOUNT} --build-arg VERSION=${versionTag} ."
+          sh "docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t ${imageAccount}/yara:${versionTag} ."
+          sh "docker build -f Dockerfile-dependencies --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t ${imageAccount}/yara-dependencies:${versionTag} ."
+          sh "docker build -f Dockerfile-compile  --pull --no-cache -t ${imageAccount}/yara-rules:${versionTag} --build-arg ACCOUNT_NUMBER=${env.MANAGEMENT_ACCOUNT} --build-arg VERSION=${versionTag} ."
           sh "aws ecr get-login --region eu-west-2 --no-include-email | bash"
           sh "docker push ${imageAccount}/yara:${versionTag}"
           sh "docker push ${imageAccount}/yara-dependencies:${versionTag}"
