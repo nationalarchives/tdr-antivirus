@@ -25,6 +25,20 @@ This creates the lambda zip using the stored docker images that were built using
 ### Jenkinsfile-deploy
 This updates the lambda with the zip file from S3.
 
+## Deploying changes
+
+There are two situations where the lambda will need to be redeployed.
+
+### Docker image updates
+If there are vulnerabilities in the current docker images and they need to be rebuilt or dependencies need to be updated, but there are no changes to the Jenkinsfile-build or the Dockerfiles themselves, then run the [build](https://jenkins.tdr-management.nationalarchives.gov.uk/job/TDR%20Antivirus%20Build/) job. This will rebuild all the images with the latest base images and the latest dependencies from the package managers.
+
+If there are changes to the Dockerfile or Jenkinsfile-build, this will need to be reviewed and merged to master as normal, then the build job will need to be run again. 
+
+The job will tag the images with the build number and the stage provided in the parameters. It will then run the bundle and deploy jobs to deploy the changes to the lambda.
+
+### Python code updates
+This includes our own custom code and any dependencies in requirements.txt This shouldn't need any manual intervention as it should trigger the [test](https://jenkins.tdr-management.nationalarchives.gov.uk/job/TDR%20Antivirus%20Test/) job which in turn runs the bundle and deploy jobs. You can run the test job manually if you need to for any reason. 
+
 ## Running locally
 
 Create a virtual environment in the antivirus directory
