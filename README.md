@@ -37,7 +37,8 @@ If there are changes to the Dockerfile or Jenkinsfile-build, this will need to b
 The job will tag the images with the build number and the stage provided in the parameters. It will then run the bundle and deploy jobs to deploy the changes to the lambda.
 
 ### Python code updates
-This includes our own custom code and any dependencies in requirements.txt This shouldn't need any manual intervention as it should trigger the [test](https://jenkins.tdr-management.nationalarchives.gov.uk/job/TDR%20Antivirus%20Test/) job which in turn runs the bundle and deploy jobs. You can run the test job manually if you need to for any reason. 
+This includes our own custom code and any dependencies in requirements.txt This shouldn't need any manual intervention for the integration environment as it should trigger the [test](https://jenkins.tdr-management.nationalarchives.gov.uk/job/TDR%20Antivirus%20Test/) job which in turn runs the bundle and deploy jobs. The build number from the bundle job determines the version of the code bundle.
+To deploy to other environments, run the [deploy](https://jenkins.tdr-management.nationalarchives.gov.uk/job/TDR%20Antivirus%20Deploy/) job with the right stage and deployment version.
 
 ## Running locally
 
