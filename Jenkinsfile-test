@@ -37,7 +37,7 @@ pipeline {
         build(
             job: "TDR Antivirus Bundle",
             parameters: [
-                string(name: "BUILD_IMAGE_TAG", value: "intg")
+                string(name: "STAGE", value: "intg")
             ],
             wait: false)
       }

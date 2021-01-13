@@ -33,7 +33,7 @@ pipeline {
           build(
               job: "TDR Antivirus Bundle",
               parameters: [
-                  string(name: "BUILD_IMAGE_TAG", value: params.STAGE)
+                  string(name: "STAGE", value: params.STAGE)
               ],
               wait: false)
       }
@@ -53,4 +53,3 @@ post {
   }
 }
 }
-
