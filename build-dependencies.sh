@@ -18,23 +18,22 @@ make install
 
 # Install cryptography and yara-python
 cd /
+pip3 install --upgrade pip
 mkdir pip
-pip3 install cryptography yara-python -t pip
+/usr/local/bin/pip3 install cryptography yara-python -t pip
 
 # Clean cryptography files
-cd ~/pip
+cd /pip
 rm -r *.dist-info *.egg-info
 find . -name __pycache__ | xargs rm -r
 mv _cffi_backend.cpython-37m-x86_64-linux-gnu.so _cffi_backend.so
 cd cryptography/hazmat/bindings
-mv _constant_time.abi3.so _constant_time.so
 mv _openssl.abi3.so _openssl.so
 mv _padding.abi3.so _padding.so
 
 # Gather pip files
 cd /
 mkdir lambda
-cp pip/.libs_cffi_backend/* lambda
 cp -r pip/* lambda
 mv lambda/yara.cpython-37m-x86_64-linux-gnu.so lambda/yara.so
 
@@ -62,7 +61,6 @@ cp /usr/lib64/libpoppler.so.46 lambda
 cp /usr/lib64/libstdc++.so.6 lambda
 cp /usr/lib64/libtiff.so.5 lambda
 cp /usr/lib64/libxml2.so.2 lambda
-cp /usr/local/lib/libyara.so.3 lambda
 
 # Build Zipfile
 cd lambda
