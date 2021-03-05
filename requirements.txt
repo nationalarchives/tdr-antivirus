@@ -5,4 +5,4 @@ pytest
 pytest-mock
 pytest-cov
 rsa>=4.7 # not directly required, pinned by Snyk to avoid a vulnerability
-cryptography == 3.3.1 # older version pinned because later versions require Rust to build
+cryptography == 3.3.2 # older version pinned because later versions require Rust to build
