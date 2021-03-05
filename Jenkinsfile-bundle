@@ -43,9 +43,9 @@ pipeline {
           tdr.configureJenkinsGitUser()
 
           sh "git tag ${versionTag}"
-          sh "git checkout master"
-
-          tdr.pushGitHubBranch("master")
+          sshagent(['github-jenkins']) {
+            sh("git push origin ${versionTag}")
+          }
 
           build(
               job: "TDR Antivirus Deploy",
