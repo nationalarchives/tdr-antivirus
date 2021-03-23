@@ -1,8 +1,3 @@
-boto3
-yara-python
-moto == 1.3.16
-pytest
-pytest-mock
-pytest-cov
-rsa>=4.7 # not directly required, pinned by Snyk to avoid a vulnerability
-cryptography == 3.3.2 # older version pinned because later versions require Rust to build
+# Load all runtime and dev packages
+-r requirements-runtime.txt
+-r requirements-test.txt

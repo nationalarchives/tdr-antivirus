@@ -23,7 +23,7 @@ make install
 cd /
 pip3 install --upgrade pip
 mkdir pip
-/usr/local/bin/pip3 install cryptography yara-python -t pip
+/usr/local/bin/pip3 install --requirement requirements.txt --target pip
 
 # Clean cryptography files
 cd /pip
