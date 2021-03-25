@@ -1,10 +1,11 @@
 import boto3
 import pytest
-from moto import mock_s3, mock_sqs
+from moto import mock_s3, mock_sqs, mock_kms
 import os
 from src import matcher
 import yara
 import json
+import base64
 from botocore.errorfactory import ClientError
 
 
@@ -16,7 +17,14 @@ def aws_credentials():
     os.environ['AWS_SECURITY_TOKEN'] = 'testing'
     os.environ['AWS_SESSION_TOKEN'] = 'testing'
 
+
 @pytest.fixture(scope='function')
+def kms(aws_credentials):
+    with mock_kms():
+        yield boto3.client('kms', region_name='eu-west-2')
+
+
+@pytest.fixture(scope='function')  #
 def s3(aws_credentials):
     with mock_s3():
         yield boto3.resource('s3', region_name='eu-west-2')
@@ -98,15 +106,32 @@ location = {'LocationConstraint': 'eu-west-2'}
 output_queue_url = "https://queue.amazonaws.com/aws_account_number/tdr-api-update-intg"
 
 
-def set_environment():
-    os.environ["ENVIRONMENT"] = "intg"
+def encrypt(key, kms, value):
+    return base64.b64encode(kms.encrypt(
+        KeyId=key,
+        Plaintext=bytearray(value, 'utf-8'),
+        EncryptionContext={
+            'LambdaFunctionName': 'test-function-name'
+        }
+    )['CiphertextBlob']).decode('utf-8')
+
+
+def set_environment(kms):
+    key = kms.create_key(
+        Policy='string',
+        Description='string',
+    )['KeyMetadata']['KeyId']
+    print(encrypt(key, kms, "intg"))
+    os.environ["ENVIRONMENT"] = encrypt(key, kms, "intg")  # intg
     os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
-    os.environ["OUTPUT_QUEUE"] = output_queue_url
-    os.environ["ROOT_DIRECTORY"] = "mnt/backend-checks"
+    os.environ["AWS_LAMBDA_FUNCTION_NAME"] = "test-function-name"
+    os.environ["OUTPUT_QUEUE"] = encrypt(key, kms, output_queue_url)
+    os.environ["ROOT_DIRECTORY"] = encrypt(key, kms, "mnt/backend-checks")
 
 
-def test_load_is_called(s3, sqs, mocker):
-    set_environment()
+def test_load_is_called(s3, sqs, mocker, kms):
+    set_environment(kms)
+
     sqs.create_queue(QueueName=output_sqs_queue)
     s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
     s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
@@ -117,8 +142,8 @@ def test_load_is_called(s3, sqs, mocker):
     yara.load.assert_called_once_with("output")
 
 
-def test_correct_output(s3, sqs, mocker):
-    set_environment()
+def test_correct_output(s3, sqs, mocker, kms):
+    set_environment(kms)
     sqs.create_queue(QueueName=output_sqs_queue)
     s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
     s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
@@ -132,8 +157,8 @@ def test_correct_output(s3, sqs, mocker):
     assert res[0]["databaseVersion"] == "1"
 
 
-def test_correct_file_id_provided(s3, sqs, mocker):
-    set_environment()
+def test_correct_file_id_provided(s3, sqs, mocker, kms):
+    set_environment(kms)
     sqs.create_queue(QueueName=output_sqs_queue)
     s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
     s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
@@ -145,8 +170,8 @@ def test_correct_file_id_provided(s3, sqs, mocker):
     assert res[0]["fileId"] == "fileId0"
 
 
-def test_match_found(s3, sqs, mocker):
-    set_environment()
+def test_match_found(s3, sqs, mocker, kms):
+    set_environment(kms)
     sqs.create_queue(QueueName=output_sqs_queue)
     s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
     s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
@@ -159,8 +184,8 @@ def test_match_found(s3, sqs, mocker):
     assert res[0]["result"] == "testmatch"
 
 
-def test_no_match_found(s3, sqs, mocker):
-    set_environment()
+def test_no_match_found(s3, sqs, mocker, kms):
+    set_environment(kms)
     sqs.create_queue(QueueName=output_sqs_queue)
     s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
     s3.create_bucket(Bucket=clean_s3_bucket, CreateBucketConfiguration=location)
@@ -171,8 +196,8 @@ def test_no_match_found(s3, sqs, mocker):
     assert res[0]["result"] == ""
 
 
-def test_multiple_match_found(s3, sqs, mocker):
-    set_environment()
+def test_multiple_match_found(s3, sqs, mocker, kms):
+    set_environment(kms)
     sqs.create_queue(QueueName=output_sqs_queue)
     s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
     s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
@@ -183,8 +208,8 @@ def test_multiple_match_found(s3, sqs, mocker):
     assert res[0]["result"] == "testmatch\ntestmatch"
 
 
-def test_multiple_records(s3, sqs, mocker):
-    set_environment()
+def test_multiple_records(s3, sqs, mocker, kms):
+    set_environment(kms)
     sqs.create_queue(QueueName=output_sqs_queue)
     s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
     s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
@@ -198,9 +223,9 @@ def test_multiple_records(s3, sqs, mocker):
     assert res[1]["result"] == "testmatch"
 
 
-def test_bucket_not_found(s3, s3_client, sqs, mocker):
+def test_bucket_not_found(s3, s3_client, sqs, mocker, kms):
     with pytest.raises(ClientError) as err:
-        set_environment()
+        set_environment(kms)
         sqs.create_queue(QueueName=output_sqs_queue)
         s3.create_bucket(Bucket='anotherbucket', CreateBucketConfiguration=location)
         s3.create_bucket(Bucket=clean_s3_bucket, CreateBucketConfiguration=location)
@@ -211,9 +236,9 @@ def test_bucket_not_found(s3, s3_client, sqs, mocker):
     assert err.typename == 'NoSuchBucket'
 
 
-def test_key_not_found(s3, sqs, mocker):
+def test_key_not_found(s3, sqs, mocker, kms):
     with pytest.raises(ClientError) as err:
-        set_environment()
+        set_environment(kms)
         sqs.create_queue(QueueName=output_sqs_queue)
         s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
         s3.create_bucket(Bucket=clean_s3_bucket, CreateBucketConfiguration=location)
@@ -224,9 +249,9 @@ def test_key_not_found(s3, sqs, mocker):
     assert err.typename == 'ClientError'
 
 
-def test_match_fails(s3, sqs, mocker):
+def test_match_fails(s3, sqs, mocker, kms):
     with pytest.raises(yara.Error):
-        set_environment()
+        set_environment(kms)
         sqs.create_queue(QueueName=output_sqs_queue)
         s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
         s3.Object(dirty_s3_bucket, "test0").put(Body="test")
@@ -240,8 +265,8 @@ def test_no_records():
     assert res == []
 
 
-def test_output_sent_to_queue(s3, sqs, mocker):
-    set_environment()
+def test_output_sent_to_queue(s3, sqs, mocker, kms):
+    set_environment(kms)
     sqs.create_queue(QueueName=output_sqs_queue)
     s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
     s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
@@ -254,8 +279,8 @@ def test_output_sent_to_queue(s3, sqs, mocker):
     assert len(res["Messages"]) == 1
 
 
-def test_output_sent_to_queue_multiple_records(s3, sqs, mocker):
-    set_environment()
+def test_output_sent_to_queue_multiple_records(s3, sqs, mocker, kms):
+    set_environment(kms)
     sqs.create_queue(QueueName=output_sqs_queue)
     s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
     s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
@@ -269,8 +294,8 @@ def test_output_sent_to_queue_multiple_records(s3, sqs, mocker):
     assert len(messages) == 2
 
 
-def test_copy_to_quarantine(s3, sqs, s3_client, mocker):
-    set_environment()
+def test_copy_to_quarantine(s3, sqs, s3_client, mocker, kms):
+    set_environment(kms)
     sqs.create_queue(QueueName=output_sqs_queue)
     s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
     s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
@@ -282,9 +307,9 @@ def test_copy_to_quarantine(s3, sqs, s3_client, mocker):
     assert res["Body"].read() == b"test"
 
 
-def test_no_copy_to_quarantine_clean(s3, sqs, s3_client, mocker):
+def test_no_copy_to_quarantine_clean(s3, sqs, s3_client, mocker, kms):
     with pytest.raises(ClientError) as err:
-        set_environment()
+        set_environment(kms)
         sqs.create_queue(QueueName=output_sqs_queue)
         s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
         s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
@@ -297,8 +322,8 @@ def test_no_copy_to_quarantine_clean(s3, sqs, s3_client, mocker):
     assert err.typename == 'NoSuchKey'
 
 
-def test_copy_to_clean_bucket(s3, sqs, s3_client, mocker):
-    set_environment()
+def test_copy_to_clean_bucket(s3, sqs, s3_client, mocker, kms):
+    set_environment(kms)
     sqs.create_queue(QueueName=output_sqs_queue)
     s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
     s3.create_bucket(Bucket=clean_s3_bucket, CreateBucketConfiguration=location)
@@ -310,9 +335,9 @@ def test_copy_to_clean_bucket(s3, sqs, s3_client, mocker):
     assert res["Body"].read() == b"test"
 
 
-def test_no_copy_to_clean_with_match(s3, sqs, s3_client, mocker):
+def test_no_copy_to_clean_with_match(s3, sqs, s3_client, mocker, kms):
     with pytest.raises(ClientError) as err:
-        set_environment()
+        set_environment(kms)
         sqs.create_queue(QueueName=output_sqs_queue)
         s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
         s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
