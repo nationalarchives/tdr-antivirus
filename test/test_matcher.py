@@ -24,7 +24,7 @@ def kms(aws_credentials):
         yield boto3.client('kms', region_name='eu-west-2')
 
 
-@pytest.fixture(scope='function')  #
+@pytest.fixture(scope='function')
 def s3(aws_credentials):
     with mock_s3():
         yield boto3.resource('s3', region_name='eu-west-2')
@@ -122,7 +122,7 @@ def set_environment(kms):
         Description='string',
     )['KeyMetadata']['KeyId']
     print(encrypt(key, kms, "intg"))
-    os.environ["ENVIRONMENT"] = encrypt(key, kms, "intg")  # intg
+    os.environ["ENVIRONMENT"] = encrypt(key, kms, "intg")
     os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
     os.environ["AWS_LAMBDA_FUNCTION_NAME"] = "test-function-name"
     os.environ["OUTPUT_QUEUE"] = encrypt(key, kms, output_queue_url)
