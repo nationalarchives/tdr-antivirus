@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 import os
 import urllib.parse
 from base64 import b64decode
+import string
+import random
 
 FORMAT = '%(asctime)-15s %(message)s'
 INFO = 20
@@ -61,7 +63,11 @@ def matcher_lambda_handler(event, lambda_context):
 
             result = "\n".join(results)
             time = int(datetime.today().replace(tzinfo=timezone.utc).timestamp()) * 1000
-            output = {"software": "yara", "softwareVersion": yara.__version__,
+
+            # Temporary code to test the antivirus export metadata
+            fakeSoftwareName = 'example-name-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+            fakeSoftwareVersion = 'example-version-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+            output = {"software": fakeSoftwareName, "softwareVersion": fakeSoftwareVersion,
                       "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
                       "result": result,
                       "datetime": time,

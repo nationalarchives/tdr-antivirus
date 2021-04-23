@@ -142,6 +142,7 @@ def test_load_is_called(s3, sqs, mocker, kms):
     yara.load.assert_called_once_with("output")
 
 
+@pytest.mark.skip(reason="in this branch we generate random values to test the export")
 def test_correct_output(s3, sqs, mocker, kms):
     set_environment(kms)
     sqs.create_queue(QueueName=output_sqs_queue)
