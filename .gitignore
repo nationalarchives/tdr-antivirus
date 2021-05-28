@@ -1,6 +1,7 @@
 dependencies.zip
 lambda/
 venv
-output
+src/output
 .idea
 __pycache__
+tdr-configurations
