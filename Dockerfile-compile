@@ -11,8 +11,7 @@ RUN apk update && apk add py3-pip wget gcc python3-dev musl-dev git && \
             chmod +x /usr/local/bin/jq && \
             pip3 install yara-python && \
             jq -r '.repositories[].url' /rules/rules.json | xargs -n1 git clone && \
-            jq -r '.repositories[].excludeDirs' /rules/rules.json | xargs -n1 rm -rf && \
-            wget https://raw.githubusercontent.com/Yara-Rules/rules/master/malware/MALW_Eicar.yar && \
+            jq -r '.repositories[].excludeDirs[]' /rules/rules.json | xargs -n1 rm -rf && \
             ./compile.py
 RUN chown -R compileuser /rules
 
