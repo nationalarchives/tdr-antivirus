@@ -27,6 +27,11 @@ pipeline {
           }
         }
       }
+      post {
+        always {
+          sh("rm -rf tdr-configurations")
+        }
+      }
     }
     stage("Upload function") {
       agent {

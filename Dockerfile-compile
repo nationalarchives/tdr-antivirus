@@ -4,12 +4,14 @@ FROM $ACCOUNT_NUMBER.dkr.ecr.eu-west-2.amazonaws.com/yara:$VERSION
 USER root
 RUN addgroup --system compilegroup && adduser --system compileuser -G compilegroup
 WORKDIR /rules
-COPY rule-sources /rules/rule-sources
+COPY tdr-configurations/antivirus/rules.json /rules/rules.json
 COPY src/compile.py /rules/compile.py
 RUN apk update && apk add py3-pip wget gcc python3-dev musl-dev git && \
+            wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /usr/local/bin/jq && \
+            chmod +x /usr/local/bin/jq && \
             pip3 install yara-python && \
-            cat rule-sources | xargs -n1 git clone && \
-            wget https://raw.githubusercontent.com/Yara-Rules/rules/master/malware/MALW_Eicar.yar && \
+            jq -r '.repositories[].url' /rules/rules.json | xargs -n1 git clone && \
+            jq -r '.repositories[].excludeDirs[]' /rules/rules.json | xargs -n1 rm -rf && \
             ./compile.py
 RUN chown -R compileuser /rules
 

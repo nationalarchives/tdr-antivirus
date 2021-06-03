@@ -17,6 +17,9 @@ pipeline {
     stage('Build and push yara docker images') {
       steps {
         script {
+          sshagent(['github-jenkins']) {
+            sh("git clone --branch master git@github.com:nationalarchives/tdr-configurations.git")
+          }
           sh "aws ecr get-login --region eu-west-2 --no-include-email | bash"
 
           sh "docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t ${imageAccount}/yara:${versionTag} ."
