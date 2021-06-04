@@ -27,17 +27,12 @@ pipeline {
           }
         }
       }
-      post {
-        always {
-          sh("rm -rf tdr-configurations")
-        }
-      }
     }
     stage("Upload function") {
       agent {
         ecs {
           inheritFrom "aws"
-          taskrole "arn:aws:iam::${env.MANAGEMENT_ACCOUNT}:role/TDRJenkinsNodeLambdaRoleIntg"
+          taskrole "arn:aws:iam::${env.MANAGEMENT_ACCOUNT}:role/TDRJenkinsNodeLambdaRole${capitalize(params.STAGE)}"
         }
       }
       steps {

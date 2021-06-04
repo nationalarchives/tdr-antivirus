@@ -45,6 +45,11 @@ pipeline {
               wait: false)
       }
     }
+    post {
+      always {
+        sh("rm -rf tdr-configurations")
+      }
+    }
   }
 }
 post {
