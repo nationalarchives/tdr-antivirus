@@ -32,7 +32,7 @@ pipeline {
       agent {
         ecs {
           inheritFrom "aws"
-          taskrole "arn:aws:iam::${env.MANAGEMENT_ACCOUNT}:role/TDRJenkinsNodeLambdaRole${capitalize(params.STAGE)}"
+          taskrole "arn:aws:iam::${env.MANAGEMENT_ACCOUNT}:role/TDRJenkinsNodeLambdaRole${params.STAGE.capitalize()}"
         }
       }
       steps {
