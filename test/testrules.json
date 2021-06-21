@@ -1,0 +1,11 @@
+{
+  "repositories": [
+    {
+      "excludeRules": {
+        "test.yar": [
+          "ExcludedRule"
+        ]
+      }
+    }
+  ]
+}

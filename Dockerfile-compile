@@ -6,12 +6,14 @@ RUN addgroup --system compilegroup && adduser --system compileuser -G compilegro
 WORKDIR /rules
 COPY tdr-configurations/antivirus/rules.json /rules/rules.json
 COPY src/compile.py /rules/compile.py
+COPY src/exclude_rules.py /rules/exclude_rules.py
 RUN apk update && apk add py3-pip wget gcc python3-dev musl-dev git && \
-            wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /usr/local/bin/jq && \
+            wget -q https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /usr/local/bin/jq && \
             chmod +x /usr/local/bin/jq && \
-            pip3 install yara-python && \
+            pip3 install yara-python plyara && \
             jq -r '.repositories[].url' /rules/rules.json | xargs -n1 git clone && \
             jq -r '.repositories[].excludeDirs[]' /rules/rules.json | xargs -n1 rm -rf && \
+            ./exclude_rules.py && \
             ./compile.py
 RUN chown -R compileuser /rules
 
