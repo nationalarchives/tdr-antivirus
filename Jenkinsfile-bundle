@@ -19,7 +19,7 @@ pipeline {
           sh "aws ecr get-login --region eu-west-2 --no-include-email | bash"
           sh "docker run -itd --rm --name dependencies yara-dependencies"
           sh "docker cp dependencies:/lambda/dependencies.zip ."
-          sh "docker run -itd --rm --name rules yara-rules
+          sh "docker run -itd --rm --name rules yara-rules"
           sh "mkdir lambda"
           sh "docker cp rules:/rules/output ./lambda"
           sh "unzip -q dependencies.zip -d ./lambda"
