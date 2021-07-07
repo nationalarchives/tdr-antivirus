@@ -14,6 +14,9 @@ pipeline {
     stage("Build zip file") {
       steps {
         script {
+          sshagent(['github-jenkins']) {
+            sh("git clone --branch master git@github.com:nationalarchives/tdr-configurations.git")
+          }
           sh "docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t yara ."
           sh "docker build -f Dockerfile-dependencies --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t yara-dependencies ."
           sh "docker build -f Dockerfile-compile --no-cache -t yara-rules ."
