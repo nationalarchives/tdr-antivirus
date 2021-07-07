@@ -13,10 +13,13 @@ pipeline {
     stage("Build zip file") {
       steps {
         script {
+          sh "docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t yara ."
+          sh "docker build -f Dockerfile-dependencies --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t yara-dependencies ."
+          sh "docker build -f Dockerfile-compile  --pull --no-cache -t yara-rules --build-arg ACCOUNT_NUMBER=${env.MANAGEMENT_ACCOUNT} --build-arg VERSION=${versionTag} ."
           sh "aws ecr get-login --region eu-west-2 --no-include-email | bash"
-          sh "docker run -itd --rm --name dependencies ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-dependencies:${params.STAGE}"
+          sh "docker run -itd --rm --name dependencies yara-dependencies"
           sh "docker cp dependencies:/lambda/dependencies.zip ."
-          sh "docker run -itd --rm --name rules ${env.MANAGEMENT_ACCOUNT}.dkr.ecr.eu-west-2.amazonaws.com/yara-rules:${params.STAGE}"
+          sh "docker run -itd --rm --name rules yara-rules
           sh "mkdir lambda"
           sh "docker cp rules:/rules/output ./lambda"
           sh "unzip -q dependencies.zip -d ./lambda"
