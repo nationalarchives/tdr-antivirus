@@ -15,7 +15,7 @@ pipeline {
         script {
           sh "docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t yara ."
           sh "docker build -f Dockerfile-dependencies --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t yara-dependencies ."
-          sh "docker build -f Dockerfile-compile  --pull --no-cache -t yara-rules --build-arg ACCOUNT_NUMBER=${env.MANAGEMENT_ACCOUNT} --build-arg VERSION=${versionTag} ."
+          sh "docker build -f Dockerfile-compile  --pull --no-cache -t yara-rules ."
           sh "aws ecr get-login --region eu-west-2 --no-include-email | bash"
           sh "docker run -itd --rm --name dependencies yara-dependencies"
           sh "docker cp dependencies:/lambda/dependencies.zip ."
