@@ -1,6 +1,7 @@
 library("tdr-jenkinslib")
 
 def versionTag = "v${env.BUILD_NUMBER}"
+def yaraVersion = "4.1.0"
 
 pipeline {
   agent {
@@ -15,7 +16,7 @@ pipeline {
         script {
           sh "docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t yara ."
           sh "docker build -f Dockerfile-dependencies --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t yara-dependencies ."
-          sh "docker build -f Dockerfile-compile  --pull --no-cache -t yara-rules ."
+          sh "docker build -f Dockerfile-compile --no-cache -t yara-rules ."
           sh "aws ecr get-login --region eu-west-2 --no-include-email | bash"
           sh "docker run -itd --rm --name dependencies yara-dependencies"
           sh "docker cp dependencies:/lambda/dependencies.zip ."
