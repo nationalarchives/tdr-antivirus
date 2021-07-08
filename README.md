@@ -2,7 +2,7 @@ This is the code and configuration to carry out the antivirus checks on a single
 
 ## Building the lambda function
 
-The lambda function is built by Jenkins. There are four Jenkins jobs in four Jenkinsfiles.
+The lambda function is built by Jenkins. There are two Jenkins jobs in two Jenkinsfiles.
 
 ### Jenkinsfile-build
 There are three docker images that are used to build the lambda. 
@@ -13,32 +13,13 @@ There are three docker images that are used to build the lambda.
 | Dockerfile-compile      | yara-rules        | Uses yara as the base image. Gets the yara rules from github and compiles them into a single file for yara to use         |
 | Dockerfile-dependencies | yara-dependencies | Installs necessary software on an amazon linux image and zips it up to be used by the lambda                              |
 
-The build job rebuilds all of these images. This isn't necessary most of the time because the dependency versions and yara version don't change that often and so this job is only ever run manually when we need to update the dependencies.
-The images are tagged with the jenkins build number and then tagged with the stage. This allows us to have different sets of dependencies for different stages. 
+These images are built on every master build locally and are not stored in ECR. 
 
 ### Jenkinsfile-test 
-This runs git secrets and runs the python tests. This is the standard multibranch pipeline job which runs on PRs and merge to master. If this runs on the master branch, it will trigger the bundle job.
-
-### Jenkinsfile-bundle
-This creates the lambda zip using the stored docker images that were built using the Dockerfile-build job and the latest python code from the project. The zip is uploaded to s3 and the deploy job is triggered.  
+This runs git secrets and runs the python tests. This is the standard multibranch pipeline job which runs on PRs and merge to master. If this runs on the master branch, it will rebuild the three Docker images locally and use them to build the lambda.
 
 ### Jenkinsfile-deploy
 This updates the lambda with the zip file from S3.
-
-## Deploying changes
-
-There are two situations where the lambda will need to be redeployed.
-
-### Docker image updates
-If there are vulnerabilities in the current docker images and they need to be rebuilt or dependencies need to be updated, but there are no changes to the Jenkinsfile-build or the Dockerfiles themselves, then run the [build](https://jenkins.tdr-management.nationalarchives.gov.uk/job/TDR%20Antivirus%20Build/) job. This will rebuild all the images with the latest base images and the latest dependencies from the package managers.
-
-If there are changes to the Dockerfile or Jenkinsfile-build, this will need to be reviewed and merged to master as normal, then the build job will need to be run again. 
-
-The job will tag the images with the build number and the stage provided in the parameters. It will then run the bundle and deploy jobs to deploy the changes to the lambda.
-
-### Python code updates
-This includes our own custom code and any dependencies in requirements.txt This shouldn't need any manual intervention for the integration environment as it should trigger the [test](https://jenkins.tdr-management.nationalarchives.gov.uk/job/TDR%20Antivirus%20Test/) job which in turn runs the bundle and deploy jobs. The build number from the bundle job determines the version of the code bundle.
-To deploy to other environments, run the [deploy](https://jenkins.tdr-management.nationalarchives.gov.uk/job/TDR%20Antivirus%20Deploy/) job with the right stage and deployment version.
 
 ## Running locally
 
