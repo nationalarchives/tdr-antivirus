@@ -11,6 +11,7 @@ RUN apk update && apk add py3-pip wget gcc python3-dev musl-dev git && \
             pip3 install yara-python plyara && \
             jq -r '.repositories[].url' /rules/rules.json | xargs -n1 git clone && \
             jq -r '.repositories[].excludeDirs[]' /rules/rules.json | xargs -n1 rm -rf && \
+            jq -r '.repositories[].excludeFiles[]' /rules/rules.json | xargs -n1 rm -f && \
             ./exclude_rules.py && \
             ./compile.py
 RUN chown -R compileuser /rules
