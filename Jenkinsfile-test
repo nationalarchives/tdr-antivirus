@@ -112,6 +112,7 @@ pipeline {
       script {
         sh "docker stop dependencies | true"
         sh "docker stop rules | true"
+        sh "rm -rf tdr-configurations lambda"
       }
     }
   }
