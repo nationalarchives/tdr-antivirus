@@ -34,17 +34,18 @@ Install dependencies
 
 `pip install -r requirements.txt`
 
-To run it, you will need to add code to the matcher.py file at the bottom.
+To run it, you will need to add code to the matcher.py file at the bottom. This will connect to the integration s3 dirty bucket so you will need to run it with integration credentials.
 
 ```python
 matcher_lambda_handler({
   "Records": [
     {
       "body": {
-        "cognitoId": "cognitoId1234",
+        "userId": "7ad28066-7a76-4e07-b540-f005b6919328",
         "consignmentId": "bf2181c7-70e4-448d-b122-be561d0e797a",
         "fileId": "df216308-e78b-4328-90ef-8e4ebfef6b9d",
-        "originalPath": "original/path"
+        "originalPath": "original/path",
+        "dirtyBucketName" : "tdr-upload-files-cloudfront-dirty-intg"
       }
     }
   ]

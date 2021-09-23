@@ -39,19 +39,20 @@ def matcher_lambda_handler(event, lambda_context):
             receipt_handle = record['receiptHandle']
             try:
                 message_body = json.loads(record['body'])
-                cognito_id = urllib.parse.unquote(message_body['cognitoId'])
+                user_id = message_body['userId']
                 consignment_id = message_body["consignmentId"]
                 original_path = message_body["originalPath"]
+                dirty_bucket_name = message_body["dirtyBucketName"]
                 root_path = f"{efs_root_location}/{consignment_id}"
                 file_id = message_body["fileId"]
                 match = rules.match(f"{root_path}/{original_path}")
                 results = [x.rule for x in match]
 
-                original_s3_key = f"{cognito_id}/{consignment_id}/{file_id}"
+                original_s3_key = f"{user_id}/{consignment_id}/{file_id}"
                 copy_s3_key = f"{consignment_id}/{file_id}"
 
                 copy_source = {
-                    "Bucket": "tdr-upload-files-dirty-" + environment,
+                    "Bucket": dirty_bucket_name,
                     "Key": original_s3_key
                 }
 
