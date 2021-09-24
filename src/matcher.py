@@ -39,7 +39,7 @@ def matcher_lambda_handler(event, lambda_context):
             receipt_handle = record['receiptHandle']
             try:
                 message_body = json.loads(record['body'])
-                user_id = message_body['userId']
+                user_id = urllib.parse.unquote(message_body['userId'])
                 consignment_id = message_body["consignmentId"]
                 original_path = message_body["originalPath"]
                 dirty_bucket_name = message_body["dirtyBucketName"]
