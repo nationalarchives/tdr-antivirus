@@ -80,10 +80,11 @@ def get_records(num=1, receipt_handles=None):
     records = []
     for i in range(num):
         body = {
-            "cognitoId": "region%3AcognitoId",
+            "userId": "userId",
             "consignmentId": "consignmentId",
             "fileId": "fileId" + str(i),
-            "originalPath": "original/path"
+            "originalPath": "original/path",
+            "dirtyBucketName": "tdr-upload-files-dirty-intg"
         }
 
         message = {
@@ -104,7 +105,7 @@ input_sqs_queue = "tdr-antivirus-intg"
 dirty_s3_bucket = 'tdr-upload-files-dirty-intg'
 quarantine_s3_bucket = 'tdr-upload-files-quarantine-intg'
 clean_s3_bucket = 'tdr-upload-files-intg'
-tdr_standard_dirty_key = "region:cognitoId/consignmentId/fileId"
+tdr_standard_dirty_key = "userId/consignmentId/fileId"
 tdr_standard_copy_key = "consignmentId/fileId"
 location = {'LocationConstraint': 'eu-west-2'}
 output_queue_url = "https://queue.amazonaws.com/aws_account_number/tdr-api-update-intg"
