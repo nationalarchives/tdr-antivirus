@@ -22,9 +22,11 @@ def decrypt(value):
 
 
 def matcher_lambda_handler(event, lambda_context):
+    time = datetime.today().replace(tzinfo=timezone.utc).timestamp() * 1000
     print(event)
     successful_receipt_handles = []
     outputs = []
+    performance_tracking = []
     if "Records" in event:
         s3_client = boto3.client("s3")
         sqs_client = boto3.client("sqs")
@@ -66,12 +68,12 @@ def matcher_lambda_handler(event, lambda_context):
                     s3_client.copy(copy_source, "tdr-upload-files-" + environment, copy_s3_key)
 
                 result = "\n".join(results)
-                time = int(datetime.today().replace(tzinfo=timezone.utc).timestamp()) * 1000
                 output = {"software": "yara", "softwareVersion": yara.__version__,
                           "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
                           "result": result,
-                          "datetime": time,
+                          "datetime": int(time),
                           "fileId": file_id}
+                performance_tracking.append({"fileId": file_id, "consignmentId": consignment_id})
                 outputs.append(output)
                 sqs_client.send_message(QueueUrl=output_queue, MessageBody=json.dumps(output))
                 logger.info("Key %s processed", f"{consignment_id}/{file_id}")
@@ -95,6 +97,10 @@ def matcher_lambda_handler(event, lambda_context):
                 logging.exception(failure)
 
             raise failures[0]  # We've logged the exceptions and now need the lambda to fail.
+        for tracking in performance_tracking:
+            time_now = datetime.today().replace(tzinfo=timezone.utc).timestamp() * 1000
+            tracking["timeTaken"] = (time_now - time) / 1000
+            print(json.dumps(tracking))
         return outputs
     else:
         logger.info("Message does not contain any records")
