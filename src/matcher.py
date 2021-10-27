@@ -97,8 +97,10 @@ def matcher_lambda_handler(event, lambda_context):
                 logging.exception(failure)
 
             raise failures[0]  # We've logged the exceptions and now need the lambda to fail.
+
+        time_now = datetime.today().replace(tzinfo=timezone.utc).timestamp() * 1000
+
         for tracking in performance_tracking:
-            time_now = datetime.today().replace(tzinfo=timezone.utc).timestamp() * 1000
             tracking["timeTaken"] = (time_now - time) / 1000
             print(json.dumps(tracking))
         return outputs
