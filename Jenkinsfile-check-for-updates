@@ -13,24 +13,30 @@ pipeline {
       steps {
         script {
           sshagent(['github-jenkins']) {
+            sh("rm -rf tdr-configurations")
             sh("git clone --branch master git@github.com:nationalarchives/tdr-configurations.git")
           }
           sh "docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t yara ."
           sh "docker build -f Dockerfile-compile --no-cache -t yara-rules ."
-          sh "docker run -itd --rm --name rules yara-rules"
-          sh "docker cp rules:/rules/output ./output-new"
-          def functionUrl = sh(script: "aws lambda get-function --function-name tdr-yara-av-intg --query 'Code.Location' --output text", returnStdout: true).trim()
+          sh "docker run -itd --rm --name rules-test yara-rules"
+          def gitVersion = sh(script: "git describe --tags --abbrev=0", returnStdout: true).trim()
+          sh "rm -rf lambda"
           sh "mkdir lambda"
+          def sha256Existing = ""
+          def sha256New = ""
           dir("lambda") {
-            sh "wget ${functionUrl} -O function.zip"
-            sh "unzip function.zip"
-            def sha256Existing = sh(script: "sha256sum output", returnStdout: true).trim()
-            def sha256New = sh(script: "sha256sum output-new", returnStdout: true).trim()
-            if(sha256Existing != sha256New) {
-              sh "aws s3 cp --recursive s3://tdr-antivirus-test-files-mgmt/ ."
-              sh "docker build -f Dockerfile-run-tests -t yara-run-tests ."
-              sh "docker run -v $PWD/testfiles:/testfiles" yara-run-tests
-            }
+            sh "docker cp rules-test:/rules/output ./output-new"
+            sh "docker stop rules-test"
+            sh "aws s3 cp s3://tdr-backend-code-mgmt/${gitVersion}/yara-av.zip ."
+            sh "unzip yara-av.zip"
+            sha256Existing = sh(script: "sha256sum output", returnStdout: true).trim()
+            sha256New = sh(script: "sha256sum output-new", returnStdout: true).trim()
+          }
+          if(sha256Existing != sha256New) {
+            sh "aws s3 cp --recursive s3://tdr-antivirus-test-files-mgmt/ ."
+            sh "docker build -f Dockerfile-run-tests --no-cache -t yara-run-tests ."
+            def status = sh(script: 'docker run yara-run-tests', returnStatus:true)
+            echo status.toString()
           }
         }
       }
@@ -41,13 +47,6 @@ pipeline {
     failure {
       script {
         echo "Failed"
-      }
-    }
-    always {
-      script {
-        sh "docker stop dependencies | true"
-        sh "docker stop rules | true"
-        sh "docker stop yara-run-tests | true"
       }
     }
   }
