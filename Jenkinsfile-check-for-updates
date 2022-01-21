@@ -1,7 +1,5 @@
 library("tdr-jenkinslib")
 
-def repo = "tdr-antivirus"
-def versionTag = "v${env.BUILD_NUMBER}"
 def yaraVersion = "4.1.0"
 
 pipeline {
@@ -39,13 +37,13 @@ pipeline {
             sh "rm -rf testfiles"
             if(status == 0) {
               tdr.postToDaTdrSlackChannel(colour: "good",
-                  message: "New version of yara rules has passed the tests. The new version will now be deployed" +
+                  message: "New version of yara rules has passed the tests. The new version will now be deployed " +
                       "${env.BUILD_URL}"
               )
               build(job: "TDR Antivirus Test/master",wait: false)
             } else {
               tdr.postToDaTdrSlackChannel(colour: "warning",
-                  message: "New version of yara rules has failed the tests. See the build output for more details" +
+                  message: "New version of yara rules has failed the tests. See the build output for more details " +
                       "${env.BUILD_URL}"
               )
             }
