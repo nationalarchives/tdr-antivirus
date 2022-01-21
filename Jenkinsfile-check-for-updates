@@ -36,7 +36,19 @@ pipeline {
             sh "aws s3 cp --recursive s3://tdr-antivirus-test-files-mgmt/ ."
             sh "docker build -f Dockerfile-run-tests --no-cache -t yara-run-tests ."
             def status = sh(script: 'docker run yara-run-tests', returnStatus:true)
-            echo status.toString()
+            sh "rm -rf testfiles"
+            if(status == 0) {
+              tdr.postToDaTdrSlackChannel(colour: "good",
+                  message: "New version of yara rules has passed the tests. The new version will now be deployed" +
+                      "${env.BUILD_URL}"
+              )
+              build(job: "TDR Antivirus Test/master",wait: false)
+            } else {
+              tdr.postToDaTdrSlackChannel(colour: "warning",
+                  message: "New version of yara rules has failed the tests. See the build output for more details" +
+                      "${env.BUILD_URL}"
+              )
+            }
           }
         }
       }
