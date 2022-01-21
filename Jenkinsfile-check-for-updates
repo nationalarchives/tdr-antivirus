@@ -16,37 +16,31 @@ pipeline {
           }
           sh "docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t yara ."
           sh "docker build -f Dockerfile-compile --no-cache -t yara-rules ."
-          sh "docker run -itd --rm --name rules-test yara-rules"
           def gitVersion = sh(script: "git tag -l --sort -version:refname | head -n 1", returnStdout: true).trim()
           sh "rm -rf lambda"
           sh "mkdir lambda"
-          def sha256Existing = ""
-          def sha256New = ""
           dir("lambda") {
-            sh "docker cp rules-test:/rules/output ./output-new"
-            sh "docker stop rules-test"
             sh "aws s3 cp s3://tdr-backend-code-mgmt/${gitVersion}/yara-av.zip ."
             sh "unzip yara-av.zip"
-            sha256Existing = sh(script: "sha256sum output", returnStdout: true).trim()
-            sha256New = sh(script: "sha256sum output-new", returnStdout: true).trim()
+            sh "cp output ../output-old"
           }
-          if(sha256Existing != sha256New) {
-            sh "aws s3 cp --recursive s3://tdr-antivirus-test-files-mgmt/ ."
-            sh "docker build -f Dockerfile-run-tests --no-cache -t yara-run-tests ."
-            def status = sh(script: 'docker run yara-run-tests', returnStatus:true)
-            sh "rm -rf testfiles"
-            if(status == 0) {
-              tdr.postToDaTdrSlackChannel(colour: "good",
-                  message: "New version of yara rules has passed the tests. The new version will now be deployed " +
-                      "${env.BUILD_URL}"
-              )
-              build(job: "TDR Antivirus Test/master",wait: false)
-            } else {
-              tdr.postToDaTdrSlackChannel(colour: "warning",
-                  message: "New version of yara rules has failed the tests. See the build output for more details " +
-                      "${env.BUILD_URL}"
-              )
-            }
+          sh "aws s3 cp --recursive s3://tdr-antivirus-test-files-mgmt/ ."
+          sh "docker build -f Dockerfile-run-tests --no-cache -t yara-run-tests ."
+          def status = sh(script: 'docker run yara-run-tests', returnStatus:true)
+          sh "rm -rf testfiles"
+          if(status == 0) {
+            tdr.postToDaTdrSlackChannel(colour: "good",
+                message: "New version of yara rules has passed the tests. The new version will now be deployed ${env.BUILD_URL}"
+            )
+            build(job: "TDR Antivirus Test/master",wait: false)
+          } else if(status == 1) {
+            tdr.postToDaTdrSlackChannel(colour: "warning",
+                message: "New version of yara rules has failed the tests. See the build output for more details ${env.BUILD_URL}"
+            )
+          } else {
+            tdr.postToDaTdrSlackChannel(colour: "warning",
+                message: "No updates found to the yara rules ${env.BUILD_URL}"
+            )
           }
         }
       }
