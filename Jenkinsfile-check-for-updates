@@ -17,7 +17,7 @@ pipeline {
           sh "docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t yara ."
           sh "docker build -f Dockerfile-compile --no-cache -t yara-rules ."
           sh "docker run -itd --rm --name rules-test yara-rules"
-          def gitVersion = sh(script: "git describe --tags --abbrev=0", returnStdout: true).trim()
+          def gitVersion = sh(script: "git tag -l --sort -version:refname | head -n 1", returnStdout: true).trim()
           sh "rm -rf lambda"
           sh "mkdir lambda"
           def sha256Existing = ""
