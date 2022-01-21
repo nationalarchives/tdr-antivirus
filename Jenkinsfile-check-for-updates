@@ -1,0 +1,54 @@
+library("tdr-jenkinslib")
+
+def repo = "tdr-antivirus"
+def versionTag = "v${env.BUILD_NUMBER}"
+def yaraVersion = "4.1.0"
+
+pipeline {
+  agent {
+    label "built-in"
+  }
+  stages {
+    stage("Check for updates") {
+      steps {
+        script {
+          sshagent(['github-jenkins']) {
+            sh("git clone --branch master git@github.com:nationalarchives/tdr-configurations.git")
+          }
+          sh "docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=${yaraVersion} -t yara ."
+          sh "docker build -f Dockerfile-compile --no-cache -t yara-rules ."
+          sh "docker run -itd --rm --name rules yara-rules"
+          sh "docker cp rules:/rules/output ./output-new"
+          def functionUrl = sh(script: "aws lambda get-function --function-name tdr-yara-av-intg --query 'Code.Location' --output text", returnStdout: true).trim()
+          sh "mkdir lambda"
+          dir("lambda") {
+            sh "wget ${functionUrl} -O function.zip"
+            sh "unzip function.zip"
+            def sha256Existing = sh(script: "sha256sum output", returnStdout: true).trim()
+            def sha256New = sh(script: "sha256sum output-new", returnStdout: true).trim()
+            if(sha256Existing != sha256New) {
+              sh "aws s3 cp --recursive s3://tdr-antivirus-test-files-mgmt/ ."
+              sh "docker build -f Dockerfile-run-tests -t yara-run-tests ."
+              sh "docker run -v $PWD/testfiles:/testfiles" yara-run-tests
+            }
+          }
+        }
+      }
+    }
+
+  }
+  post {
+    failure {
+      script {
+        echo "Failed"
+      }
+    }
+    always {
+      script {
+        sh "docker stop dependencies | true"
+        sh "docker stop rules | true"
+        sh "docker stop yara-run-tests | true"
+      }
+    }
+  }
+}

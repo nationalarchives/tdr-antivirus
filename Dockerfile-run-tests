@@ -1,0 +1,4 @@
+FROM yara-rules
+COPY run_av_tests.py /
+
+CMD python3 /run_av_tests.py

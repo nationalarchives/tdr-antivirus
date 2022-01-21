@@ -5,3 +5,5 @@ output
 .idea
 __pycache__
 tdr-configurations
+.terraform
+tdr-terraform-modules
