@@ -50,7 +50,7 @@ pipeline {
   post {
     failure {
       script {
-        echo "Failed"
+        tdr.postToDaTdrSlackChannel(colour: "danger", message: "Yara rules check job has failed ${env.BUILD_URL}")
       }
     }
   }
