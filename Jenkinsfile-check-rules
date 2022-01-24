@@ -38,7 +38,7 @@ pipeline {
                 message: "New version of yara rules has failed the tests. See the build output for more details ${env.BUILD_URL}"
             )
           } else {
-            tdr.postToDaTdrSlackChannel(colour: "warning",
+            tdr.postToDaTdrSlackChannel(colour: "good",
                 message: "No updates found to the yara rules ${env.BUILD_URL}"
             )
           }
