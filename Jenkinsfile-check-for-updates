@@ -1,6 +1,6 @@
 library("tdr-jenkinslib")
 
-def yaraVersion = "4.1.0"
+def yaraVersion = "4.1.3"
 
 pipeline {
   agent {
