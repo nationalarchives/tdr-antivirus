@@ -20,7 +20,13 @@ if rules_old_id != rules_id:
         matches = rules.match(f"/testfiles/{file}")
         av_message = "No match found" if len(matches) == 0 else " ".join([m.rule for m in matches])
         logging.debug(f"{file} {av_message}")
-        match_len = match_len + len(matches)
+        if "eicar" in file.lower():
+            eicar_matches = sorted([m.rule for m in matches])
+            if eicar_matches != ["SUSP_Just_EICAR", "eicar"]:
+                logging.debug(f"Unexpected response from eicar file {' '.join(eicar_matches)}")
+                sys.exit(1)
+        else:
+            match_len = match_len + len(matches)
 
     if match_len > 0:
         sys.exit(1)
