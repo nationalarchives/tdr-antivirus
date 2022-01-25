@@ -2,7 +2,7 @@ library("tdr-jenkinslib")
 
 def repo = "tdr-antivirus"
 def versionTag = "v${env.BUILD_NUMBER}"
-def yaraVersion = "4.1.3"
+def yaraVersion = readFile "version.txt"
 
 pipeline {
   agent {
