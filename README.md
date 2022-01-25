@@ -87,7 +87,7 @@ There is a Jenkins job [TDR Antivirus Rule Update Check](https://jenkins.tdr-man
 * Builds the rules yara image.
 * Gets the highest version tag from git.
 * Downloads the lambda zip file from S3.
-* Unzips the zip file and copies the exiting compiled rule file into the current directory.
+* Unzips the zip file and copies the existing compiled rule file into the current directory.
 * Downloads the tests file from the tdr-antivirus-test-files-mgmt S3 bucket.
 * Builds the docker image from the Dockerfile-run-tests file which copies the existing compiled rules and the test files to the container.
 * Runs this docker image. This runs a python script which runs these steps:
@@ -102,4 +102,4 @@ Because this runs the master build job without any code changes, you end up with
 
 ## Test files bucket terraform
 
-In the terraform directory are some terraform files which are used to create the bucket `tdr-antivirus-test-files-mgmt`. This bucket is used to store the files against which we run a periodic check of any new yara rules. This should almost never need to be updated. 
+In the terraform directory there are some terraform files which are used to create the bucket `tdr-antivirus-test-files-mgmt`. This bucket is used to store the files against which we run a periodic check of any new yara rules. This should almost never need to be updated.
