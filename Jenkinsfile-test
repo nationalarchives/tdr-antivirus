@@ -2,7 +2,6 @@ library("tdr-jenkinslib")
 
 def repo = "tdr-antivirus"
 def versionTag = "v${env.BUILD_NUMBER}"
-def yaraVersion = readFile "version.txt"
 
 pipeline {
   agent {
@@ -40,6 +39,7 @@ pipeline {
         stage("Build zip file") {
           steps {
             script {
+              def yaraVersion = readFile "version.txt"
               sshagent(['github-jenkins']) {
                 sh("git clone --branch master git@github.com:nationalarchives/tdr-configurations.git")
               }
