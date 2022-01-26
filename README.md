@@ -79,3 +79,27 @@ Run with coverage `python -m pytest --cov=src`
 Run with coverage and missing lines `python -m pytest --cov-report term-missing --cov=src`
 
 Run with coverage, missing lines and junit output `python -m pytest --cov-report term-missing --junitxml="result.xml" --cov=src`
+
+## Yara rules checks.
+
+There is a Jenkins job [TDR Antivirus Rule Update Check](https://jenkins.tdr-management.nationalarchives.gov.uk/job/TDR%20Antivirus%20Rule%20Update%20Check/) which is run on a schedule from the Jenkinsfile-check-rules file. This carries out the following steps. 
+* Builds the base yara image.
+* Builds the rules yara image.
+* Gets the highest version tag from git.
+* Downloads the lambda zip file from S3.
+* Unzips the zip file and copies the existing compiled rule file into the current directory.
+* Downloads the tests file from the tdr-antivirus-test-files-mgmt S3 bucket.
+* Builds the docker image from the Dockerfile-run-tests file which copies the existing compiled rules and the test files to the container.
+* Runs this docker image. This runs a python script which runs these steps:
+    * Compares the rule identifiers in the old compiled rules file with the new one.
+    * If there are new yara rules in the new compiled rules, it will run the antivirus checks against the test files from the S3 bucket.
+        * NOTE: It will not detect if rules have been removed, and it won't check if they've been changed either. I tried to do it based on hashes but it's likely to bring up too many false positives.
+    * Yara is run against the test files using the new rules. If no matches are found after the new rules are run against the test files, it returns exit code zero and the Jenkins job builds the Antivirus multibranch master branch job.
+  
+These steps can be run manually by copying the commands from the Jenkinsfile-check-rules.
+
+Because this runs the master build job without any code changes, you end up with more than one version pointed to the same commit. We still have separate zip files stored in S3 for each version though so we can still roll back if necessary.
+
+## Test files bucket terraform
+
+In the terraform directory there are some terraform files which are used to create the bucket `tdr-antivirus-test-files-mgmt`. This bucket is used to store the files against which we run a periodic check of any new yara rules. This should almost never need to be updated.
