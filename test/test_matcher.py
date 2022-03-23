@@ -236,7 +236,7 @@ def test_bucket_not_found(s3, s3_client, sqs, mocker, kms):
         set_environment(kms)
         sqs.create_queue(QueueName=output_sqs_queue)
         sqs.create_queue(QueueName=input_sqs_queue)
-        sqs.send_message(QueueUrl=input_sqs_queue, MessageBody='body')
+        sqs.send_message(QueueUrl=input_queue_url, MessageBody='body')
         messages = sqs.receive_message(QueueUrl=input_queue_url, AttributeNames=['All'], MaxNumberOfMessages=10)
         receipt_handle = messages["Messages"][0]["ReceiptHandle"]
         s3.create_bucket(Bucket='anotherbucket', CreateBucketConfiguration=location)
@@ -270,7 +270,7 @@ def test_match_fails(s3, sqs, mocker, kms):
         set_environment(kms)
         sqs.create_queue(QueueName=output_sqs_queue)
         sqs.create_queue(QueueName=input_sqs_queue)
-        sqs.send_message(QueueUrl=input_sqs_queue, MessageBody='body')
+        sqs.send_message(QueueUrl=input_queue_url, MessageBody='body')
         messages = sqs.receive_message(QueueUrl=input_queue_url, AttributeNames=['All'], MaxNumberOfMessages=10)
         receipt_handle = messages["Messages"][0]["ReceiptHandle"]
         s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
@@ -306,8 +306,8 @@ def test_successful_message_deleted_from_queue(s3, sqs, mocker, kms):
         sqs.create_queue(QueueName=input_sqs_queue)
         s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
         s3.create_bucket(Bucket=clean_s3_bucket, CreateBucketConfiguration=location)
-        sqs.send_message(QueueUrl=input_sqs_queue, MessageBody='body')
-        failed_message = sqs.send_message(QueueUrl=input_sqs_queue, MessageBody='body2')
+        sqs.send_message(QueueUrl=input_queue_url, MessageBody='body')
+        failed_message = sqs.send_message(QueueUrl=input_queue_url, MessageBody='body2')
         messages = sqs.receive_message(QueueUrl=input_queue_url, AttributeNames=['All'], MaxNumberOfMessages=10)
         receipt_handles = [msg["ReceiptHandle"] for msg in messages["Messages"]]
         s3.Object(dirty_s3_bucket, f"{tdr_standard_dirty_key}0").put(Body="test")
@@ -409,4 +409,4 @@ def test_message_visibility_reset_on_error(s3, sqs, mocker, kms):
         matcher.matcher_lambda_handler(get_records(receipt_handles=[receipt_handle]), None)
     assert err.typename == 'ClientError'
     input_messages = sqs.receive_message(QueueUrl=input_queue_url)
-    assert len(input_messages["Messages"]) == 1
+    assert len(input_messages) == 1
