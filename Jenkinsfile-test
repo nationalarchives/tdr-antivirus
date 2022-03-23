@@ -39,7 +39,7 @@ pipeline {
         stage("Build zip file") {
           steps {
             script {
-              def yaraVersion = readFile "version.txt"
+              def yaraVersion = readFile "yara-version.txt"
               sshagent(['github-jenkins']) {
                 sh("git clone --branch master git@github.com:nationalarchives/tdr-configurations.git")
               }
