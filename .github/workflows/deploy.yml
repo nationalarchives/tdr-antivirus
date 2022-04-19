@@ -1,6 +1,5 @@
 name: TDR Deploy Antivirus Lambda
 on:
-  push:
   workflow_dispatch:
     inputs:
       environment:
