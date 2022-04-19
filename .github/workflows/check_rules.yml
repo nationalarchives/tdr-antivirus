@@ -1,7 +1,6 @@
 name: TDR Check Antivirus Rules
 on:
   workflow_dispatch:
-  push:
 permissions:
   id-token: write
   contents: read
@@ -9,6 +8,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - id: run-checks
         run: |
           wget --header "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/nationalarchives/tdr-configurations/master/antivirus/rules.json
@@ -29,7 +29,7 @@ jobs:
       - uses: nationalarchives/tdr-github-actions/.github/actions/slack-send@main
         if: steps.run-checks.outputs.exit-code == 0
         with:
-          message: "New version of yara rules has passed the tests. The new version will now be deployed https://github.com/tdr-antivirus/actions/runs/${{ github.run_id }}"
+          message: "New version of yara rules has passed the tests. The new version will now be deployed https://github.com/nationalarchives/tdr-antivirus/actions/runs/${{ github.run_id }}"
           slack-url: ${{ secrets.SLACK_WEBHOOK }}
       - run: gh workflow run build.yml
         if: steps.run-checks.outputs.exit-code == 0
@@ -38,10 +38,10 @@ jobs:
       - uses: nationalarchives/tdr-github-actions/.github/actions/slack-send@main
         if: steps.run-checks.outputs.exit-code == 1
         with:
-          message: "New version of yara rules has failed the tests. See the build output for more details https://github.com/tdr-antivirus/actions/runs/${{ github.run_id }}"
+          message: "New version of yara rules has failed the tests. See the build output for more details https://github.com/nationalarchives/tdr-antivirus/actions/runs/${{ github.run_id }}"
           slack-url: ${{ secrets.SLACK_WEBHOOK }}
       - uses: nationalarchives/tdr-github-actions/.github/actions/slack-send@main
         if: steps.run-checks.outputs.exit-code == 3
         with:
-          message: "No updates found to the yara rules https://github.com/tdr-antivirus/actions/runs/${{ github.run_id }}"
+          message: "No updates found to the yara rules https://github.com/nationalarchives/tdr-antivirus/actions/runs/${{ github.run_id }}"
           slack-url: ${{ secrets.SLACK_WEBHOOK }}
