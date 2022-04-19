@@ -28,6 +28,7 @@ jobs:
           cd ..
           aws s3 cp --recursive s3://tdr-antivirus-test-files-mgmt/ .
           docker build -f Dockerfile-check-rules --no-cache -t yara-run-tests .
+          docker run yara-run-tests
           echo ::set-output name=exit-code::$?
         env:
           GITHUB_TOKEN: ${{ secrets.WORKFLOW_PAT }}
