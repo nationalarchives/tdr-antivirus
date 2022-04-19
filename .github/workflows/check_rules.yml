@@ -9,6 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Configure AWS credentials for Lambda
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.MANAGEMENT_ACCOUNT }}:role/TDRGithubAvRuleChecksMgmt`
+          aws-region: eu-west-2
+          role-session-name: DownloadTestFiles
       - id: run-checks
         run: |
           wget --header "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/nationalarchives/tdr-configurations/master/antivirus/rules.json
