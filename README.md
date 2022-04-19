@@ -2,10 +2,13 @@ This is the code and configuration to carry out the antivirus checks on a single
 
 ## Building the lambda function
 
-The lambda function is built by Jenkins. There are two Jenkins jobs in two Jenkinsfiles.
+The lambda function is built by GitHub actions. There are three actions in three yml files.
 
-### Jenkinsfile-build
-There are three docker images that are used to build the lambda. 
+### test.yml 
+This runs git secrets and runs the python tests. This is the standard multibranch pipeline job which runs on PRs and merge to master. If this runs on the master branch, it will rebuild the three Docker images locally and use them to build the lambda.
+
+### build.yml
+There are three docker images that are used to build the lambda.
 
 | File name               | Image Name        | Description                                                                                                               |
 |-------------------------|-------------------|---------------------------------------------------------------------------------------------------------------------------|
@@ -13,13 +16,10 @@ There are three docker images that are used to build the lambda.
 | Dockerfile-compile      | yara-rules        | Uses yara as the base image. Gets the yara rules from github and compiles them into a single file for yara to use         |
 | Dockerfile-dependencies | yara-dependencies | Installs necessary software on an amazon linux image and zips it up to be used by the lambda                              |
 
-These images are built on every master build locally and are not stored in ECR. 
+These images are built on every master build locally and are not stored in ECR.
 
-### Jenkinsfile-test 
-This runs git secrets and runs the python tests. This is the standard multibranch pipeline job which runs on PRs and merge to master. If this runs on the master branch, it will rebuild the three Docker images locally and use them to build the lambda.
-
-### Jenkinsfile-deploy
-This updates the lambda with the zip file from S3.
+### deploy.yml
+This deploys the lambda from S3
 
 ## Running locally
 
@@ -82,7 +82,7 @@ Run with coverage, missing lines and junit output `python -m pytest --cov-report
 
 ## Yara rules checks.
 
-There is a Jenkins job [TDR Antivirus Rule Update Check](https://jenkins.tdr-management.nationalarchives.gov.uk/job/TDR%20Antivirus%20Rule%20Update%20Check/) which is run on a schedule from the Jenkinsfile-check-rules file. This carries out the following steps. 
+There is a GitHub actions job [TDR Check Antivirus Rules](https://github.com/nationalarchives/tdr-antivirus/actions/workflows/check_rules.yml) which is run on a schedule from the .github/workflows/check_rules file. This carries out the following steps. 
 * Builds the base yara image.
 * Builds the rules yara image.
 * Gets the highest version tag from git.
@@ -94,9 +94,9 @@ There is a Jenkins job [TDR Antivirus Rule Update Check](https://jenkins.tdr-man
     * Compares the rule identifiers in the old compiled rules file with the new one.
     * If there are new yara rules in the new compiled rules, it will run the antivirus checks against the test files from the S3 bucket.
         * NOTE: It will not detect if rules have been removed, and it won't check if they've been changed either. I tried to do it based on hashes but it's likely to bring up too many false positives.
-    * Yara is run against the test files using the new rules. If no matches are found after the new rules are run against the test files, it returns exit code zero and the Jenkins job builds the Antivirus multibranch master branch job.
+    * Yara is run against the test files using the new rules. If no matches are found after the new rules are run against the test files, it returns exit code zero and the GitHub actions job builds the Antivirus multibranch master branch job.
   
-These steps can be run manually by copying the commands from the Jenkinsfile-check-rules.
+These steps can be run manually by copying the commands from the .github/workflows/check_rules.yml file.
 
 Because this runs the master build job without any code changes, you end up with more than one version pointed to the same commit. We still have separate zip files stored in S3 for each version though so we can still roll back if necessary.
 
