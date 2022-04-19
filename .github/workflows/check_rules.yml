@@ -1,0 +1,43 @@
+name: TDR Check Antivirus Rules
+on:
+  workflow_dispatch:
+  push:
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - id: run-checks
+        run: |
+          wget --header "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/nationalarchives/tdr-configurations/master/antivirus/rules.json
+          docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=$(cat yara-version.txt) -t yara .
+          docker build -f Dockerfile-compile --no-cache -t yara-rules .
+          mkdir -p lambda
+          wget $(gh release view --json assets -q '.assets[0].url') -O lambda/function.zip
+          cd lambda
+          unzip function.zip
+          cp output ../output-old
+          cd ..
+          aws s3 cp --recursive s3://tdr-antivirus-test-files-mgmt/ .
+          docker build -f Dockerfile-check-rules --no-cache -t yara-run-tests .
+          echo ::set-output name=exit-code::$?
+        continue-on-error: true
+      - uses: nationalarchives/tdr-github-actions/.github/actions/slack-send@main
+        if: steps.run-checks.outputs.exit-code == 0
+        with:
+          message: "New version of yara rules has passed the tests. The new version will now be deployed https://github.com/tdr-antivirus/actions/runs/$GITHUB_RUN_ID"
+          slack-url: ${{ secrets.SLACK_WEBHOOK }}
+      - run: gh workflow run build.yml
+        if: steps.run-checks.outputs.exit-code == 0
+      - uses: nationalarchives/tdr-github-actions/.github/actions/slack-send@main
+        if: steps.run-checks.outputs.exit-code == 1
+        with:
+          message: "New version of yara rules has failed the tests. See the build output for more details https://github.com/tdr-antivirus/actions/runs/$GITHUB_RUN_ID"
+          slack-url: ${{ secrets.SLACK_WEBHOOK }}
+      - uses: nationalarchives/tdr-github-actions/.github/actions/slack-send@main
+        if: steps.run-checks.outputs.exit-code == 3
+        with:
+          message: "No updates found to the yara rules https://github.com/tdr-antivirus/actions/runs/$GITHUB_RUN_ID"
+          slack-url: ${{ secrets.SLACK_WEBHOOK }}
