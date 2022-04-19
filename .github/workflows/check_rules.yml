@@ -23,21 +23,25 @@ jobs:
           aws s3 cp --recursive s3://tdr-antivirus-test-files-mgmt/ .
           docker build -f Dockerfile-check-rules --no-cache -t yara-run-tests .
           echo ::set-output name=exit-code::$?
+        env:
+          GITHUB_TOKEN: ${{ secrets.WORKFLOW_PAT }}
         continue-on-error: true
       - uses: nationalarchives/tdr-github-actions/.github/actions/slack-send@main
         if: steps.run-checks.outputs.exit-code == 0
         with:
-          message: "New version of yara rules has passed the tests. The new version will now be deployed https://github.com/tdr-antivirus/actions/runs/$GITHUB_RUN_ID"
+          message: "New version of yara rules has passed the tests. The new version will now be deployed https://github.com/tdr-antivirus/actions/runs/${{ github.run_id }}"
           slack-url: ${{ secrets.SLACK_WEBHOOK }}
       - run: gh workflow run build.yml
         if: steps.run-checks.outputs.exit-code == 0
+        env:
+          GITHUB_TOKEN: ${{ secrets.WORKFLOW_PAT }}
       - uses: nationalarchives/tdr-github-actions/.github/actions/slack-send@main
         if: steps.run-checks.outputs.exit-code == 1
         with:
-          message: "New version of yara rules has failed the tests. See the build output for more details https://github.com/tdr-antivirus/actions/runs/$GITHUB_RUN_ID"
+          message: "New version of yara rules has failed the tests. See the build output for more details https://github.com/tdr-antivirus/actions/runs/${{ github.run_id }}"
           slack-url: ${{ secrets.SLACK_WEBHOOK }}
       - uses: nationalarchives/tdr-github-actions/.github/actions/slack-send@main
         if: steps.run-checks.outputs.exit-code == 3
         with:
-          message: "No updates found to the yara rules https://github.com/tdr-antivirus/actions/runs/$GITHUB_RUN_ID"
+          message: "No updates found to the yara rules https://github.com/tdr-antivirus/actions/runs/${{ github.run_id }}"
           slack-url: ${{ secrets.SLACK_WEBHOOK }}
