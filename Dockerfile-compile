@@ -2,7 +2,7 @@ FROM yara
 USER root
 RUN addgroup --system compilegroup && adduser --system compileuser -G compilegroup
 WORKDIR /rules
-COPY tdr-configurations/antivirus/rules.json /rules/rules.json
+COPY rules.json /rules/rules.json
 COPY src/compile.py /rules/compile.py
 COPY src/exclude_rules.py /rules/exclude_rules.py
 RUN apk update && apk add py3-pip wget gcc python3-dev musl-dev git && \

@@ -13,6 +13,7 @@ jobs:
       artifact-file-type: zip
       artifact-path: lambda
       build-command: |
+        wget --header "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/nationalarchives/tdr-configurations/master/antivirus/rules.json
         docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=$(cat yara-version.txt) -t yara .
         docker build -f Dockerfile-dependencies --pull --no-cache --build-arg YARA_VERSION=$(cat yara-version.txt) -t yara-dependencies .
         docker build -f Dockerfile-compile --no-cache -t yara-rules .
