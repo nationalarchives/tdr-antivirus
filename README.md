@@ -82,7 +82,7 @@ Run with coverage, missing lines and junit output `python -m pytest --cov-report
 
 ## Yara rules checks.
 
-There is a GitHub actions job [TDR Check Antivirus Rules](https://github.com/nationalarchives/tdr-antivirus/actions/workflows/check_rules.yml) which is run on a schedule from the .github/workflows/check_rules file. This carries out the following steps. 
+There is a GitHub actions job [TDR Check Antivirus Rules](https://github.com/nationalarchives/tdr-antivirus/actions/workflows/check_rules.yml) which is run on a schedule from the .github/workflows/check_rules file. This runs at 07:20 on a Monday. This carries out the following steps. 
 * Builds the base yara image.
 * Builds the rules yara image.
 * Gets the highest version tag from git.
