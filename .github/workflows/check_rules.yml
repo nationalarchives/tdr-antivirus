@@ -1,0 +1,55 @@
+name: TDR Check Antivirus Rules
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '20 7 * * 1'
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure AWS credentials for Lambda
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.MANAGEMENT_ACCOUNT }}:role/TDRGithubAvRuleChecksMgmt
+          aws-region: eu-west-2
+          role-session-name: DownloadTestFiles
+      - id: run-checks
+        run: |
+          wget --header "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/nationalarchives/tdr-configurations/master/antivirus/rules.json
+          docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=$(cat yara-version.txt) -t yara .
+          docker build -f Dockerfile-compile --no-cache -t yara-rules .
+          mkdir -p lambda
+          wget $(gh release view --json assets -q '.assets[0].url') -O lambda/function.zip
+          cd lambda
+          unzip function.zip
+          cp output ../output-old
+          cd ..
+          aws s3 cp --recursive s3://tdr-antivirus-test-files-mgmt/ .
+          docker build -f Dockerfile-check-rules --no-cache -t yara-run-tests .
+          docker run yara-run-tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.WORKFLOW_PAT }}
+        continue-on-error: true
+      - uses: nationalarchives/tdr-github-actions/.github/actions/slack-send@main
+        if: steps.run-checks.outputs.status == 'ExpectedResponse'
+        with:
+          message: "New version of yara rules has passed the tests. The new version will now be deployed https://github.com/nationalarchives/tdr-antivirus/actions/runs/${{ github.run_id }}"
+          slack-url: ${{ secrets.SLACK_WEBHOOK }}
+      - run: gh workflow run build.yml
+        if: steps.run-checks.outputs.status == 'ExpectedResponse'
+        env:
+          GITHUB_TOKEN: ${{ secrets.WORKFLOW_PAT }}
+      - uses: nationalarchives/tdr-github-actions/.github/actions/slack-send@main
+        if: steps.run-checks.outputs.status == 'UnexpectedResponse'
+        with:
+          message: "New version of yara rules has failed the tests. See the build output for more details https://github.com/nationalarchives/tdr-antivirus/actions/runs/${{ github.run_id }}"
+          slack-url: ${{ secrets.SLACK_WEBHOOK }}
+      - uses: nationalarchives/tdr-github-actions/.github/actions/slack-send@main
+        if: steps.run-checks.outputs.status == 'RulesUnchanged'
+        with:
+          message: "No updates found to the yara rules https://github.com/nationalarchives/tdr-antivirus/actions/runs/${{ github.run_id }}"
+          slack-url: ${{ secrets.SLACK_WEBHOOK }}

@@ -24,11 +24,14 @@ if rules_old_id != rules_id:
             eicar_matches = sorted([m.rule for m in matches])
             if eicar_matches != ["SUSP_Just_EICAR", "eicar"]:
                 logging.debug(f"Unexpected response from eicar file {' '.join(eicar_matches)}")
-                sys.exit(1)
+                print(f"::set-output name=status::UnexpectedResponse")
+
         else:
             match_len = match_len + len(matches)
 
     if match_len > 0:
-        sys.exit(1)
+        print(f"::set-output name=status::UnexpectedResponse")
+    else:
+        print(f"::set-output name=status::ExpectedResponse")
 else:
-    sys.exit(3)
+    print(f"::set-output name=status::RulesUnchanged")
