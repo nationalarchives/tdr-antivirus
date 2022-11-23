@@ -38,21 +38,13 @@ To run it, you will need to add code to the matcher.py file at the bottom. This 
 
 ```python
 matcher_lambda_handler({
-  "Records": [
-    {
-      "body": {
         "userId": "7ad28066-7a76-4e07-b540-f005b6919328",
         "consignmentId": "bf2181c7-70e4-448d-b122-be561d0e797a",
         "fileId": "df216308-e78b-4328-90ef-8e4ebfef6b9d",
-        "originalPath": "original/path",
-        "dirtyBucketName" : "tdr-upload-files-cloudfront-dirty-intg"
-      }
-    }
-  ]
-}, None)
+        "originalPath": "original/path"
+      }, None)
 ```
 
-This is the minimum json you need but you can experiment with additional messages in the `Records` element
 
 Then either run this through the cli
 
@@ -66,9 +58,8 @@ AWS_SECRET_ACCESS_KEY
 AWS_SESSION_TOKEN
 
 AWS_LAMBDA_FUNCTION_VERSION - This is the lambda function version. It's provided by the lambda and so needs to be set here. Set it to "$LATEST"
-OUTPUT_QUEUE - This is the queue for the api updates. It's https://sqs.eu-west-2.amazonaws.com/${account_number}/tdr-api-update-\$STAGE
 ENVIRONMENT - intg, staging or prod
-ROOT_DIRECTORY - This is the root directory for the EFS backend checks file system. It's /mnt/backend-checks
+ROOT_DIRECTORY - This is the root directory for the file download in the lambda file system.
 
 ## Running the tests
 

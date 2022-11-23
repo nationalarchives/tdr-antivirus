@@ -1,8 +1,0 @@
-library("tdr-jenkinslib")
-
-deployToLambda(
-        stage: params.STAGE,
-        libraryName: "yara-av",
-        version: params.TO_DEPLOY,
-        deploymentPackageName: "yara-av.zip"
-)
