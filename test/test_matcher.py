@@ -102,7 +102,7 @@ def test_correct_output(s3, mocker, tmpdir):
     s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
-    res = matcher.matcher_lambda_handler(get_records(), None)
+    res = matcher.matcher_lambda_handler(get_records(), None)["antivirus"]
     assert res["software"] == "yara"
     assert res["softwareVersion"] == yara.__version__
     assert res["databaseVersion"] == "1"
@@ -115,7 +115,7 @@ def test_correct_file_id_provided(s3, mocker, tmpdir):
     s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
-    res = matcher.matcher_lambda_handler(get_records(), None)
+    res = matcher.matcher_lambda_handler(get_records(), None)["antivirus"]
     assert res["fileId"] == "fileId"
 
 
@@ -127,7 +127,7 @@ def test_match_found(s3, mocker, tmpdir):
     mocker.patch('yara.load')
 
     yara.load.return_value = MockRulesMatchFound()
-    res = matcher.matcher_lambda_handler(get_records(), None)
+    res = matcher.matcher_lambda_handler(get_records(), None)["antivirus"]
     assert res["result"] == "testmatch"
 
 
@@ -138,7 +138,7 @@ def test_no_match_found(s3, mocker, tmpdir):
     s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesNoMatch()
-    res = matcher.matcher_lambda_handler(get_records(), None)
+    res = matcher.matcher_lambda_handler(get_records(), None)["antivirus"]
     assert res["result"] == ""
 
 
@@ -149,7 +149,7 @@ def test_multiple_match_found(s3, mocker, tmpdir):
     s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMultipleMatchFound()
-    res = matcher.matcher_lambda_handler(get_records(), None)
+    res = matcher.matcher_lambda_handler(get_records(), None)["antivirus"]
     assert res["result"] == "testmatch\ntestmatch"
 
 

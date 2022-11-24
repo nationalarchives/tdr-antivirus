@@ -56,8 +56,11 @@ def matcher_lambda_handler(event, lambda_context):
 
     logger.info("Key %s processed", f"{consignment_id}/{file_id}")
 
-    return {"software": "yara", "softwareVersion": yara.__version__,
-            "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
-            "result": result,
-            "datetime": int(time),
-            "fileId": file_id}
+    return {
+        "antivirus":
+            {"software": "yara", "softwareVersion": yara.__version__,
+             "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
+             "result": result,
+             "datetime": int(time),
+             "fileId": file_id}
+    }
