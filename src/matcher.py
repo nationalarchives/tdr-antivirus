@@ -1,11 +1,8 @@
 import yara
 import boto3
-import json
 import logging
 from datetime import datetime, timezone
 import os
-import urllib.parse
-from base64 import b64decode
 
 FORMAT = '%(asctime)-15s %(message)s'
 INFO = 20
@@ -14,96 +11,56 @@ logger = logging.getLogger('matcher')
 logger.setLevel(INFO)
 
 
-def decrypt(value):
-    return boto3.client('kms').decrypt(
-        CiphertextBlob=b64decode(value),
-        EncryptionContext={'LambdaFunctionName': os.environ['AWS_LAMBDA_FUNCTION_NAME']}
-    )['Plaintext'].decode('utf-8')
-
-
 def matcher_lambda_handler(event, lambda_context):
     time = datetime.today().replace(tzinfo=timezone.utc).timestamp() * 1000
     print(event)
-    successful_receipt_handles = []
-    outputs = []
-    performance_tracking = []
-    if "Records" in event:
-        s3_client = boto3.client("s3")
-        sqs_client = boto3.client("sqs")
-        rules = yara.load("output")
-        efs_root_location = decrypt(os.environ["ROOT_DIRECTORY"])
-        environment = decrypt(os.environ["ENVIRONMENT"])
-        output_queue = decrypt(os.environ["OUTPUT_QUEUE"])
-        input_queue = decrypt(os.environ["INPUT_QUEUE"])
-        records = event['Records']
-        failures = []
-        for record in records:
-            receipt_handle = record['receiptHandle']
-            try:
-                message_body = json.loads(record['body'])
-                user_id = urllib.parse.unquote(message_body['userId'])
-                consignment_id = message_body["consignmentId"]
-                original_path = message_body["originalPath"]
-                dirty_bucket_name = message_body["dirtyBucketName"]
-                root_path = f"{efs_root_location}/{consignment_id}"
-                file_id = message_body["fileId"]
-                match = rules.match(f"{root_path}/{original_path}")
-                results = [x.rule for x in match]
+    file_id = event["fileId"]
+    user_id = event["userId"]
+    original_path = event["originalPath"]
+    consignment_id = event["consignmentId"]
+    environment = os.environ["ENVIRONMENT"]
+    dirty_bucket_name = f"tdr-upload-files-cloudfront-dirty-{environment}"
+    s3_client = boto3.client("s3")
+    s3_resource = boto3.resource("s3")
 
-                original_s3_key = f"{user_id}/{consignment_id}/{file_id}"
-                copy_s3_key = f"{consignment_id}/{file_id}"
+    rules = yara.load("output")
+    efs_root_location = os.environ["ROOT_DIRECTORY"]
 
-                copy_source = {
-                    "Bucket": dirty_bucket_name,
-                    "Key": original_s3_key
-                }
+    root_path = f"{efs_root_location}/{consignment_id}"
+    file_path = f"{root_path}/{original_path}"
+    os.makedirs("/".join(file_path.split("/")[:-1]))
+    bucket = s3_resource.Bucket(dirty_bucket_name)
+    bucket.download_file(f"{user_id}/{consignment_id}/{file_id}", file_path)
 
-                if len(results) > 0:
-                    s3_client.copy(
-                        copy_source,
-                        "tdr-upload-files-quarantine-" + environment,
-                        copy_s3_key
-                    )
-                else:
-                    s3_client.copy(copy_source, "tdr-upload-files-" + environment, copy_s3_key)
+    match = rules.match(f"{root_path}/{original_path}")
+    results = [x.rule for x in match]
 
-                result = "\n".join(results)
-                output = {"software": "yara", "softwareVersion": yara.__version__,
-                          "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
-                          "result": result,
-                          "datetime": int(time),
-                          "fileId": file_id}
-                performance_tracking.append({"fileId": file_id, "consignmentId": consignment_id})
-                outputs.append(output)
-                sqs_client.send_message(QueueUrl=output_queue, MessageBody=json.dumps(output))
-                logger.info("Key %s processed", f"{consignment_id}/{file_id}")
-                successful_receipt_handles.append(receipt_handle)
-            except Exception as ex:
-                failures.append(ex)
-                logger.error(ex)
-                sqs_client.change_message_visibility(
-                    QueueUrl=input_queue,
-                    ReceiptHandle=receipt_handle,
-                    VisibilityTimeout=0
-                )
+    original_s3_key = f"{user_id}/{consignment_id}/{file_id}"
+    copy_s3_key = f"{consignment_id}/{file_id}"
 
-        if len(failures) > 0:
-            for successful_receipt_handle in successful_receipt_handles:
-                sqs_client.delete_message(
-                    QueueUrl=input_queue,
-                    ReceiptHandle=successful_receipt_handle
-                )
-            for failure in failures:
-                logging.exception(failure)
+    copy_source = {
+        "Bucket": dirty_bucket_name,
+        "Key": original_s3_key
+    }
 
-            raise failures[0]  # We've logged the exceptions and now need the lambda to fail.
-
-        time_now = datetime.today().replace(tzinfo=timezone.utc).timestamp() * 1000
-
-        for tracking in performance_tracking:
-            tracking["timeTaken"] = (time_now - time) / 1000
-            print(json.dumps(tracking))
-        return outputs
+    if len(results) > 0:
+        s3_client.copy(
+            copy_source,
+            "tdr-upload-files-quarantine-" + environment,
+            copy_s3_key
+        )
     else:
-        logger.info("Message does not contain any records")
-        return []
+        s3_client.copy(copy_source, "tdr-upload-files-" + environment, copy_s3_key)
+
+    result = "\n".join(results)
+
+    logger.info("Key %s processed", f"{consignment_id}/{file_id}")
+
+    return {
+        "antivirus":
+            {"software": "yara", "softwareVersion": yara.__version__,
+             "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
+             "result": result,
+             "datetime": int(time),
+             "fileId": file_id}
+    }

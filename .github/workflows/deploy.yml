@@ -17,7 +17,7 @@ jobs:
   deploy:
     uses: nationalarchives/tdr-github-actions/.github/workflows/lambda_deploy.yml@main
     with:
-      lambda-name: yara-av
+      lambda-name: yara-av-v2
       deployment-package: function.zip
       environment: ${{ github.event.inputs.environment }}
       to-deploy: ${{ github.event.inputs.to-deploy }}
