@@ -3,6 +3,7 @@ import boto3
 import logging
 from datetime import datetime, timezone
 import os
+from os.path import exists
 
 FORMAT = '%(asctime)-15s %(message)s'
 INFO = 20
@@ -28,9 +29,12 @@ def matcher_lambda_handler(event, lambda_context):
 
     root_path = f"{efs_root_location}/{consignment_id}"
     file_path = f"{root_path}/{original_path}"
-    os.makedirs("/".join(file_path.split("/")[:-1]))
-    bucket = s3_resource.Bucket(dirty_bucket_name)
-    bucket.download_file(f"{user_id}/{consignment_id}/{file_id}", file_path)
+    download_directory = "/".join(file_path.split("/")[:-1])
+    if not exists(download_directory):
+        os.makedirs(download_directory)
+    if not exists(file_path):
+        bucket = s3_resource.Bucket(dirty_bucket_name)
+        bucket.download_file(f"{user_id}/{consignment_id}/{file_id}", file_path)
 
     match = rules.match(f"{root_path}/{original_path}")
     results = [x.rule for x in match]
