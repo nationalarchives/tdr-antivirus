@@ -29,8 +29,10 @@ def matcher_lambda_handler(event, lambda_context):
 
     root_path = f"{efs_root_location}/{consignment_id}"
     file_path = f"{root_path}/{original_path}"
+    download_directory = "/".join(file_path.split("/")[:-1])
+    if not exists(download_directory):
+        os.makedirs(download_directory)
     if not exists(file_path):
-        os.makedirs("/".join(file_path.split("/")[:-1]))
         bucket = s3_resource.Bucket(dirty_bucket_name)
         bucket.download_file(f"{user_id}/{consignment_id}/{file_id}", file_path)
 
