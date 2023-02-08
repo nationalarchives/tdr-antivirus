@@ -15,7 +15,7 @@ jobs:
       repo-name: tdr-antivirus
       test-command: |
         pip install -r requirements.txt
-        python3 -m pip install --upgrade openssl
+        pip install pyopenssl --upgrade
         python -m pytest
     secrets:
       SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
