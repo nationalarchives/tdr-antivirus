@@ -30,7 +30,9 @@ jobs:
           cd ..
           aws s3 cp --recursive s3://tdr-antivirus-test-files-mgmt/ .
           docker build -f Dockerfile-check-rules --no-cache -t yara-run-tests .
-          docker run -e GITHUB_OUTPUT=$GITHUB_OUTPUT -v $GITHUB_OUTPUT:$GITHUB_OUTPUT yara-run-tests
+          touch output
+          docker run -e GITHUB_OUTPUT=$(pwd)/output -v $(pwd)/output:$(pwd)/output yara-run-tests
+          cat output >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.WORKFLOW_PAT }}
         continue-on-error: true
