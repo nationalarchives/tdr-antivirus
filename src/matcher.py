@@ -1,15 +1,35 @@
-import yara
 import boto3
 import logging
 from datetime import datetime, timezone
 import os
 from os.path import exists
+import subprocess
 
 FORMAT = '%(asctime)-15s %(message)s'
 INFO = 20
+MAX_BYTES = 4000000000
 logging.basicConfig(format=FORMAT)
 logger = logging.getLogger('matcher')
 logger.setLevel(INFO)
+
+
+def scan(download_path):
+    subprocess.run("freshclam")
+    command = [
+        "clamscan",
+        "--stdout",
+        f"--max-scansize={MAX_BYTES}",
+        f"{download_path}",
+    ]
+    scan_summary = subprocess.run(
+        command,
+        stderr=subprocess.STDOUT,
+        stdout=subprocess.PIPE,
+    )
+    print("Scan complete")
+    print(scan_summary.stdout)
+    print(scan_summary.stderr)
+    return scan_summary.returncode
 
 
 def matcher_lambda_handler(event, lambda_context):
@@ -24,10 +44,9 @@ def matcher_lambda_handler(event, lambda_context):
     s3_client = boto3.client("s3")
     s3_resource = boto3.resource("s3")
 
-    rules = yara.load("output")
     efs_root_location = os.environ["ROOT_DIRECTORY"]
 
-    root_path = f"{efs_root_location}/{consignment_id}"
+    root_path = f"{efs_root_location}"
     file_path = f"{root_path}/{original_path}"
     download_directory = "/".join(file_path.split("/")[:-1])
     if not exists(download_directory):
@@ -36,9 +55,7 @@ def matcher_lambda_handler(event, lambda_context):
         bucket = s3_resource.Bucket(dirty_bucket_name)
         bucket.download_file(f"{user_id}/{consignment_id}/{file_id}", file_path)
 
-    match = rules.match(f"{root_path}/{original_path}")
-    results = [x.rule for x in match]
-
+    exit_code = scan(file_path)
     original_s3_key = f"{user_id}/{consignment_id}/{file_id}"
     copy_s3_key = f"{consignment_id}/{file_id}"
 
@@ -47,7 +64,7 @@ def matcher_lambda_handler(event, lambda_context):
         "Key": original_s3_key
     }
 
-    if len(results) > 0:
+    if exit_code != 0:
         s3_client.copy(
             copy_source,
             "tdr-upload-files-quarantine-" + environment,
@@ -56,15 +73,13 @@ def matcher_lambda_handler(event, lambda_context):
     else:
         s3_client.copy(copy_source, "tdr-upload-files-" + environment, copy_s3_key)
 
-    result = "\n".join(results)
-
     logger.info("Key %s processed", f"{consignment_id}/{file_id}")
 
     return {
         "antivirus":
-            {"software": "yara", "softwareVersion": yara.__version__,
+            {"software": "yara", "softwareVersion": "1",
              "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
-             "result": result,
+             "result": exit_code,
              "datetime": int(time),
              "fileId": file_id}
     }
