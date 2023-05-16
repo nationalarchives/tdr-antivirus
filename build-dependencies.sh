@@ -23,7 +23,8 @@ make install
 cd /
 pip3 install --upgrade pip
 mkdir pip
-/usr/local/bin/pip3 install --requirement requirements.txt --target pip
+/usr/local/bin/pip3.9 install --requirement requirements.txt --target pip
+/usr/local/bin/pip3.9 install --platform manylinux2010_x86_64 --implementation cp --python 3.9 --only-binary=:all: --upgrade --target /pip cryptography
 
 # Clean cryptography files
 cd /pip
