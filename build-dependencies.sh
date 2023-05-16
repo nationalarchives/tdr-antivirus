@@ -3,10 +3,10 @@
 # Installs yara and all required dependencies and packages them into a zip used by the lambda at runtime
 # There is a requirements.txt in this project but this is only dependencies for running the tests.
 
-yum update -y
-yum install -y autoconf automake bzip2-devel gcc64 gcc64-c++ libarchive-devel libffi-devel \
+dnf update -y
+dnf install -y autoconf automake bzip2-devel gcc libarchive-devel libffi-devel \
         libtool libuuid-devel openssl-devel pcre-devel poppler-utils python3-pip python3-devel zlib-devel \
-            wget make gcc-c++ xz libpng-devel
+            wget make xz libpng-devel
 
 # Compile YARA
 YARA_VERSION=$1
