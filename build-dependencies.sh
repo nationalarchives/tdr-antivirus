@@ -10,7 +10,7 @@ yum install -y autoconf automake bzip2-devel gcc.x86_64 gcc-c++.x86_64 libarchiv
 
 # Compile YARA
 YARA_VERSION=$1
-wget https://github.com/VirusTotal/yara/archive/v$YARA_VERSION.tar.gz
+wget https://github.com/VirusTotal/yara/archive/refs/tags/v$YARA_VERSION.tar.gz
 tar -xzf v$YARA_VERSION.tar.gz
 cd yara-$YARA_VERSION
 ./bootstrap.sh
