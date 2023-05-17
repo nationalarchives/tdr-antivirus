@@ -4,7 +4,7 @@
 # There is a requirements.txt in this project but this is only dependencies for running the tests.
 
 yum update -y
-yum install -y autoconf automake bzip2-devel gcc64 gcc64-c++ libarchive-devel libffi-devel \
+yum install -y autoconf automake bzip2-devel gcc.x86_64 gcc-c++.x86_64 libarchive-devel libffi-devel \
         libtool libuuid-devel openssl-devel pcre-devel poppler-utils python3-pip python3-devel zlib-devel \
             wget make gcc-c++ xz libpng-devel
 
