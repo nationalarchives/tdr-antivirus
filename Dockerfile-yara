@@ -1,7 +1,7 @@
 FROM alpine 
 ARG YARA_VERSION
 RUN addgroup --system yaragroup && adduser --system yarauser -G yaragroup
-RUN apk update && apk add openssl-dev jansson-dev build-base libc-dev file-dev automake autoconf libtool flex git bison && \
+RUN apk update && apk add openssl-dev jansson-dev build-base libc-dev file-dev automake autoconf libtool flex git bison linux-headers && \
             git clone --recursive --branch v$YARA_VERSION https://github.com/VirusTotal/yara.git && \
             cd yara && \
             ./bootstrap.sh && \
