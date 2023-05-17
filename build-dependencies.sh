@@ -62,6 +62,7 @@ cp /usr/lib64/libpoppler.so.123 lambda
 cp /usr/lib64/libstdc++.so.6 lambda
 cp /usr/lib64/libtiff.so.5 lambda
 cp /usr/lib64/libxml2.so.2 lambda
+cp /usr/lib64/libcrypto.so.3 lambda
 
 # Build Zipfile
 cd lambda
