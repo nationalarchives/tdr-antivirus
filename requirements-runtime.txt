@@ -1,2 +1,2 @@
 cryptography == 39.0.1 # older version pinned because later versions require Rust to build
-yara-python == 4.2.0
+yara-python == 4.3.1

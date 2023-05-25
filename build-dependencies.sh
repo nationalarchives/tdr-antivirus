@@ -4,8 +4,8 @@
 # There is a requirements.txt in this project but this is only dependencies for running the tests.
 
 yum update -y
-yum install -y autoconf automake bzip2-devel gcc64 gcc64-c++ libarchive-devel libffi-devel \
-        libtool libuuid-devel openssl-devel pcre-devel poppler-utils python3-pip python3-devel zlib-devel \
+yum install -y autoconf automake bzip2-devel libarchive-devel libffi-devel \
+        libtool libuuid-devel openssl11-devel openssl11-static pcre-devel poppler-utils python3-pip python3-devel zlib-devel \
             wget make gcc-c++ xz libpng-devel
 
 # Compile YARA
@@ -14,7 +14,7 @@ wget https://github.com/VirusTotal/yara/archive/v$YARA_VERSION.tar.gz
 tar -xzf v$YARA_VERSION.tar.gz
 cd yara-$YARA_VERSION
 ./bootstrap.sh
-./configure
+./configure CFLAGS="-I/usr/bin/openssl11"
 make
 make check  # Run unit tests
 make install
@@ -64,6 +64,7 @@ cp /usr/lib64/libpoppler.so.46 lambda
 cp /usr/lib64/libstdc++.so.6 lambda
 cp /usr/lib64/libtiff.so.5 lambda
 cp /usr/lib64/libxml2.so.2 lambda
+cp /usr/lib64/libcrypto.so.1.1 lambda
 
 # Build Zipfile
 cd lambda
