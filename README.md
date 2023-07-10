@@ -93,4 +93,29 @@ Because this runs the master build job without any code changes, you end up with
 
 ## Test files bucket terraform
 
+**Important Note**: tdr-antivirus uses >= v1.5.0 of Terraform. Ensure that Terraform >= v1.5.0 is installed before proceeding.
+
 In the terraform directory there are some terraform files which are used to create the bucket `tdr-antivirus-test-files-mgmt`. This bucket is used to store the files against which we run a periodic check of any new yara rules. This should almost never need to be updated.
+
+To run the Terraform:
+
+1. Navigate to the `terraform` directory:
+    ```
+   [location of project]: cd terraform
+   ```
+2. Clone the `tdr-terraform-modules` repository into the `terraform` directory
+    ```
+   [location of terraform directory]: git clone https://github.com/nationalarchives/tdr-terraform-modules.git
+   ```
+3. Initiate Terraform:
+    ```
+   [location of terraform directory]: terraform init
+   ```
+4. Select the `default` Terraform workspace`
+    ```
+   [location of terraform directory]: terraform workspace select default
+   ```
+5. Run Terraform `plan` / `apply` commands with AWS credentials that have access to the TDR management environment as needed:
+    ```
+   [location of terraform directory]: terraform {plan/apply}
+   ```
