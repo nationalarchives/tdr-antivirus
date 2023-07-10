@@ -93,7 +93,7 @@ Because this runs the master build job without any code changes, you end up with
 
 ## Test files bucket terraform
 
-**Important Note**: tdr-terraform-environments uses >= v1.5.0 of Terraform. Ensure that Terraform >= v1.5.0 is installed before proceeding.
+**Important Note**: tdr-antivirus uses >= v1.5.0 of Terraform. Ensure that Terraform >= v1.5.0 is installed before proceeding.
 
 In the terraform directory there are some terraform files which are used to create the bucket `tdr-antivirus-test-files-mgmt`. This bucket is used to store the files against which we run a periodic check of any new yara rules. This should almost never need to be updated.
 
