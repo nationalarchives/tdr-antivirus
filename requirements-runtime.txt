@@ -1,2 +1,2 @@
-cryptography == 42.0.0
+cryptography == 42.0.2
 yara-python == 4.3.1
