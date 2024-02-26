@@ -6,6 +6,7 @@ COPY rules.json /rules/rules.json
 COPY src/compile.py /rules/compile.py
 COPY src/exclude_rules.py /rules/exclude_rules.py
 RUN apk update && apk add py3-pip wget gcc python3-dev musl-dev git linux-headers && \
+RUN apk update pip3 && \
             wget -q https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /usr/local/bin/jq && \
             chmod +x /usr/local/bin/jq && \
             pip3 install yara-python plyara && \
