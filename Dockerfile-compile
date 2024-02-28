@@ -5,18 +5,22 @@ WORKDIR /rules
 COPY rules.json /rules/rules.json
 COPY src/compile.py /rules/compile.py
 COPY src/exclude_rules.py /rules/exclude_rules.py
+
 RUN apk update && apk add py3-pip wget gcc python3-dev musl-dev git linux-headers && \
             wget -q https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O /usr/local/bin/jq && \
-            chmod +x /usr/local/bin/jq && \
-            python3 -m venv .venv && \
+            chmod +x /usr/local/bin/jq
+
+RUN python3 -m venv .venv && \
             source .venv/bin/activate && \
-            python3 -m pip install yara-python plyara && \
-#            deactivate && \
-            jq -r '.repositories[].url' /rules/rules.json | xargs -n1 git clone && \
+            pip3 install --upgrade pip && \
+            pip3 install yara-python plyara
+    
+RUN jq -r '.repositories[].url' /rules/rules.json | xargs -n1 git clone && \
             jq -r '.repositories[].excludeDirs[]' /rules/rules.json | xargs -n1 rm -rf && \
             jq -r '.repositories[].excludeFiles[]' /rules/rules.json | xargs -n1 rm -f && \
-            python3 ./exclude_rules.py && \
-            python3 ./compile.py
+            source .venv/bin/activate ./exclude_rules.py && \
+            source .venv/bin/activate ./compile.py 
+    
 RUN chown -R compileuser /rules
 
 USER compileuser
