@@ -18,8 +18,9 @@ RUN python3 -m venv .venv && \
 RUN jq -r '.repositories[].url' /rules/rules.json | xargs -n1 git clone && \
             jq -r '.repositories[].excludeDirs[]' /rules/rules.json | xargs -n1 rm -rf && \
             jq -r '.repositories[].excludeFiles[]' /rules/rules.json | xargs -n1 rm -f && \
-            source .venv/bin/activate ./exclude_rules.py && \
-            source .venv/bin/activate ./compile.py 
+            source .venv/bin/activate && \
+            python ./exclude_rules.py && \
+            python ./compile.py
     
 RUN chown -R compileuser /rules
 
