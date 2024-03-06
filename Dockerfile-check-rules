@@ -2,4 +2,4 @@ FROM yara-rules
 COPY run_av_tests.py /
 COPY output-old /rules/output-old
 COPY ./testfiles /testfiles
-CMD source .venv/bin/activate && python ./run_av_tests.py
+CMD source .venv/bin/activate && python /run_av_tests.py
