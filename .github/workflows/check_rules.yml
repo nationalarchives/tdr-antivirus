@@ -21,7 +21,7 @@ jobs:
         run: |
           wget --header "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/nationalarchives/tdr-configurations/master/antivirus/rules.json
           docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=$(cat yara-version.txt) -t yara .
-          docker build -f Dockerfile-compile --no-cache -t yara-rules .
+          docker build -f Dockerfile-compile --build-arg YARA_VERSION=$(cat yara-version.txt) --no-cache -t yara-rules .
           mkdir -p lambda
           wget $(gh release view --json assets -q '.assets[0].url') -O lambda/function.zip
           cd lambda

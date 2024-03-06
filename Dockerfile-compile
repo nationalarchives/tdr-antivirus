@@ -1,4 +1,5 @@
 FROM yara
+ARG YARA_VERSION
 USER root
 RUN addgroup --system compilegroup && adduser --system compileuser -G compilegroup
 WORKDIR /rules
@@ -13,7 +14,7 @@ RUN apk update && apk add py3-pip wget gcc python3-dev musl-dev git linux-header
 RUN python3 -m venv .venv && \
             source .venv/bin/activate && \
             pip3 install --upgrade pip && \
-            pip3 install yara-python plyara
+            pip3 install yara-python==$YARA_VERSION plyara
     
 RUN jq -r '.repositories[].url' /rules/rules.json | xargs -n1 git clone && \
             jq -r '.repositories[].excludeDirs[]' /rules/rules.json | xargs -n1 rm -rf && \
