@@ -6,6 +6,7 @@ import os
 from os.path import exists
 from dataclasses import dataclass
 from typing import Optional
+from enum import Enum
 
 FORMAT = '%(asctime)-15s %(message)s'
 INFO = 20
@@ -15,74 +16,33 @@ logger.setLevel(INFO)
 
 
 def matcher_lambda_handler(event, lambda_context):
-    time = datetime.today().replace(tzinfo=timezone.utc).timestamp() * 1000
+    handler_trigger_time = datetime.today().replace(tzinfo=timezone.utc).timestamp() * 1000
     print(event)
-    check_type = event["checkType"]
-    file_id = event["fileId"]
-    user_id = event["userId"]
-    original_path = event["originalPath"]
-    consignment_id = event["consignmentId"]
-    environment = os.environ["ENVIRONMENT"]
     s3_client = boto3.client("s3")
-    s3_resource = boto3.resource("s3")
-    efs_root_location = os.environ["ROOT_DIRECTORY"]
-    root_path = f"{efs_root_location}/{consignment_id}"
 
-    settings = VirusCheckSettings(
-        s3_source_location=S3Location(
-            bucket="tdr-upload-files-cloudfront-dirty-" + environment,
-            key=f"{user_id}/{consignment_id}/{file_id}"
-        ),
-        s3_quarantine_location=S3Location(
-            bucket="tdr-upload-files-quarantine-" + environment,
-            key=f"{consignment_id}/{file_id}"
-        ),
-        local_download_location=f"{root_path}/{original_path}"
-    ) if check_type == "consignment" else VirusCheckSettings(
-        s3_source_location=S3Location(
-            bucket="",
-            key=""
-        ),
-        s3_quarantine_location=None,
-        local_download_location=""
-    )
-
+    settings = build_settings(event)
+    download_file_if_not_already_present(settings)
     rules = yara.load("output")
-    download_directory = "/".join(settings.local_download_location.split("/")[:-1])
-    if not exists(download_directory):
-        os.makedirs(download_directory)
-    if not exists(settings.local_download_location):
-        bucket = s3_resource.Bucket(settings.s3_source_location.bucket)
-        bucket.download_file(settings.s3_source_location.key, settings.local_download_location)
+    violated_rules = [x.rule for x in rules.match(settings.local_download_location)]
 
-    match = rules.match(settings.local_download_location)
-    results = [x.rule for x in match]
-
-    copy_s3_key = f"{consignment_id}/{file_id}"
-
-    if settings.s3_quarantine_location is not None:
-        if len(results) > 0:
+    if len(violated_rules) > 0:
+        if settings.s3_quarantine_location is not None:
             s3_client.copy(
                 settings.s3_source_location.as_dict(),
                 settings.s3_quarantine_location.bucket,
                 settings.s3_quarantine_location.key
             )
-        else:
-            # TODO: Add s3_upload_location
-            s3_client.copy(settings.s3_source_location.as_dict(), "tdr-upload-files-" + environment, copy_s3_key)
+    else:
+        if settings.s3_upload_location is not None:
+            s3_client.copy(
+                settings.s3_source_location.as_dict(),
+                settings.s3_upload_location.bucket,
+                settings.s3_upload_location.key
+            )
 
-    result = "\n".join(results)
+    logger.info("Key %s processed", settings.s3_source_location.key)
 
-    logger.info("Key %s processed", f"{consignment_id}/{file_id}")
-
-    return {
-        "antivirus":
-            {"software": "yara", "softwareVersion": yara.__version__,
-             "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
-             "result": result,
-             "datetime": int(time),
-             "fileId": file_id}
-    }
+    return antivirus_results_dict(settings.file_id, violated_rules, handler_trigger_time)
 
 
 @dataclass(frozen=True)
@@ -98,6 +58,76 @@ class S3Location:
 
 @dataclass(frozen=True)
 class VirusCheckSettings:
+    file_id: str
     s3_source_location: S3Location
     s3_quarantine_location: Optional[S3Location]
+    s3_upload_location: Optional[S3Location]
     local_download_location: str
+
+
+class ScanType(Enum):
+    metadata = 1
+    consignment = 2
+
+
+def build_settings(event: dict) -> VirusCheckSettings:
+    scan_type = ScanType[event.get("scanType", "consignment")]
+    consignment_id = event["consignmentId"]
+    file_id = event["fileId"]
+
+    environment = os.environ["ENVIRONMENT"]
+    efs_root_location = os.environ["ROOT_DIRECTORY"]
+    root_path = f"{efs_root_location}/{consignment_id}"
+    if scan_type == ScanType.consignment:
+        user_id = event["userId"]
+        original_path = event["originalPath"]
+        return VirusCheckSettings(
+            file_id=file_id,
+            s3_source_location=S3Location(
+                bucket="tdr-upload-files-cloudfront-dirty-" + environment,
+                key=f"{user_id}/{consignment_id}/{file_id}"
+            ),
+            s3_quarantine_location=S3Location(
+                bucket="tdr-upload-files-quarantine-" + environment,
+                key=f"{consignment_id}/{file_id}"
+            ),
+            s3_upload_location=S3Location(
+                bucket="tdr-upload-files-" + environment,
+                key=f"{consignment_id}/{file_id}"
+            ),
+            local_download_location=f"{root_path}/{original_path}"
+        )
+    elif scan_type == ScanType.metadata:
+        return VirusCheckSettings(
+            file_id=file_id,
+            s3_source_location=S3Location(
+                bucket="tdr-draft-metadata-" + environment,
+                key=f"{consignment_id}/{file_id}"
+            ),
+            s3_quarantine_location=None,
+            s3_upload_location=None,
+            local_download_location=f"{root_path}/metadata/{file_id}"
+        )
+
+
+def download_file_if_not_already_present(settings):
+    s3_resource = boto3.resource("s3")
+    download_directory = "/".join(settings.local_download_location.split("/")[:-1])
+    if not exists(download_directory):
+        os.makedirs(download_directory)
+    if not exists(settings.local_download_location):
+        bucket = s3_resource.Bucket(settings.s3_source_location.bucket)
+        bucket.download_file(settings.s3_source_location.key, settings.local_download_location)
+
+
+def antivirus_results_dict(file_id, results, time):
+    return {
+        "antivirus":
+            {
+                "software": "yara", "softwareVersion": yara.__version__,
+                "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
+                "result": "\n".join(results),
+                "datetime": int(time),
+                "fileId": file_id
+            }
+    }
