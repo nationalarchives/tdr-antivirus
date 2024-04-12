@@ -23,9 +23,9 @@ def matcher_lambda_handler(event, lambda_context):
     settings = build_settings(event)
     download_file_if_not_already_present(settings)
     rules = yara.load("output")
-    violated_rules = [x.rule for x in rules.match(settings.local_download_location)]
+    matched_antivirus_rules = [x.rule for x in rules.match(settings.local_download_location)]
 
-    if len(violated_rules) > 0:
+    if len(matched_antivirus_rules) > 0:
         if settings.s3_quarantine_location is not None:
             s3_client.copy(
                 settings.s3_source_location.as_dict(),
@@ -42,7 +42,7 @@ def matcher_lambda_handler(event, lambda_context):
 
     logger.info("Key %s processed", settings.s3_source_location.key)
 
-    return antivirus_results_dict(settings.file_id, violated_rules, handler_trigger_time)
+    return antivirus_results_dict(settings.file_id, matched_antivirus_rules, handler_trigger_time)
 
 
 @dataclass(frozen=True)
