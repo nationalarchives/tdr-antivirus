@@ -89,6 +89,7 @@ metadata_source_location = S3Location(
 clean_s3_bucket = 'tdr-upload-files-intg'
 tdr_standard_dirty_key = "userId/consignmentId/fileId"
 tdr_standard_copy_key = "consignmentId/fileId"
+tdr_metadata_copy_key = "consignmentId/metadata/draft-metadata.csv"
 location = {'LocationConstraint': 'eu-west-2'}
 
 
@@ -170,6 +171,7 @@ def test_multiple_match_found(s3, mocker, tmpdir):
 def test_match_found_metadata(s3, mocker, tmpdir):
     set_environment(tmpdir)
     s3.create_bucket(Bucket=metadata_source_location.bucket, CreateBucketConfiguration=location)
+    s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
     s3.Object(metadata_source_location.bucket, metadata_source_location.key).put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
@@ -190,6 +192,7 @@ def test_no_match_found_metadata(s3, mocker, tmpdir):
 def test_multiple_match_found_metadata(s3, mocker, tmpdir):
     set_environment(tmpdir)
     s3.create_bucket(Bucket=metadata_source_location.bucket, CreateBucketConfiguration=location)
+    s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
     s3.Object(metadata_source_location.bucket, metadata_source_location.key).put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMultipleMatchFound()
@@ -243,18 +246,16 @@ def test_copy_to_quarantine(s3, s3_client, mocker, tmpdir):
     assert res["Body"].read() == b"test"
 
 
-def test_no_copy_to_quarantine_with_match_metadata(s3, s3_client, mocker, tmpdir):
-    with pytest.raises(ClientError) as err:
-        set_environment(tmpdir)
-        s3.create_bucket(Bucket=metadata_source_location.bucket, CreateBucketConfiguration=location)
-        s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
-        s3.Object(metadata_source_location.bucket, metadata_source_location.key).put(Body="test")
-        mocker.patch('yara.load')
-        yara.load.return_value = MockRulesMatchFound()
-        matcher.matcher_lambda_handler(get_metadata_event(), None)
-        s3_client.get_object(Bucket=quarantine_s3_bucket, Key="consignmentId")
-    assert err.typename == 'NoSuchKey'
-
+def test_copy_to_quarantine_with_match_metadata(s3, s3_client, mocker, tmpdir):
+    set_environment(tmpdir)
+    s3.create_bucket(Bucket=metadata_source_location.bucket, CreateBucketConfiguration=location)
+    s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
+    s3.Object(metadata_source_location.bucket, metadata_source_location.key).put(Body="test")
+    mocker.patch('yara.load')
+    yara.load.return_value = MockRulesMatchFound()
+    matcher.matcher_lambda_handler(get_metadata_event(), None)
+    res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=tdr_metadata_copy_key)
+    assert res["Body"].read() == b"test"
 
 def test_no_copy_to_quarantine_clean(s3, s3_client, mocker, tmpdir):
     with pytest.raises(ClientError) as err:

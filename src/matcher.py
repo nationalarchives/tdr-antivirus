@@ -78,7 +78,21 @@ def build_settings(event: dict) -> VirusCheckSettings:
     environment = os.environ["ENVIRONMENT"]
     efs_root_location = os.environ["ROOT_DIRECTORY"]
     root_path = f"{efs_root_location}/{consignment_id}"
-    if scan_type == ScanType.consignment:
+    if scan_type == ScanType.metadata:
+        return VirusCheckSettings(
+            file_id=file_id,
+            s3_source_location=S3Location(
+                bucket="tdr-draft-metadata-" + environment,
+                key=f"{consignment_id}/{file_id}"
+            ),
+            s3_quarantine_location=S3Location(
+                bucket="tdr-upload-files-quarantine-" + environment,
+                key=f"{consignment_id}/metadata/{file_id}"
+            ),
+            s3_upload_location=None,
+            local_download_location=f"{root_path}/metadata/{file_id}"
+        )
+    else:
         user_id = event["userId"]
         original_path = event["originalPath"]
         return VirusCheckSettings(
@@ -96,17 +110,6 @@ def build_settings(event: dict) -> VirusCheckSettings:
                 key=f"{consignment_id}/{file_id}"
             ),
             local_download_location=f"{root_path}/{original_path}"
-        )
-    elif scan_type == ScanType.metadata:
-        return VirusCheckSettings(
-            file_id=file_id,
-            s3_source_location=S3Location(
-                bucket="tdr-draft-metadata-" + environment,
-                key=f"{consignment_id}/{file_id}"
-            ),
-            s3_quarantine_location=None,
-            s3_upload_location=None,
-            local_download_location=f"{root_path}/metadata/{file_id}"
         )
 
 
