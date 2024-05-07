@@ -6,6 +6,8 @@ from src import matcher
 import yara
 from botocore.errorfactory import ClientError
 
+from src.matcher import S3Location
+
 
 @pytest.fixture(scope='function')
 def aws_credentials():
@@ -61,7 +63,7 @@ class MockRulesMatchError:
         raise yara.Error()
 
 
-def get_records():
+def get_consignment_event():
     return {
         "userId": "userId",
         "consignmentId": "consignmentId",
@@ -70,11 +72,24 @@ def get_records():
     }
 
 
+def get_metadata_event():
+    return {
+        "scanType": "metadata",
+        "consignmentId": "consignmentId",
+        "fileId": "draft-metadata.csv",
+    }
+
+
 dirty_s3_bucket = 'tdr-upload-files-cloudfront-dirty-intg'
 quarantine_s3_bucket = 'tdr-upload-files-quarantine-intg'
+metadata_source_location = S3Location(
+    bucket='tdr-draft-metadata-intg',
+    key='consignmentId/draft-metadata.csv'
+)
 clean_s3_bucket = 'tdr-upload-files-intg'
 tdr_standard_dirty_key = "userId/consignmentId/fileId"
 tdr_standard_copy_key = "consignmentId/fileId"
+tdr_metadata_copy_key = "consignmentId/metadata/draft-metadata.csv"
 location = {'LocationConstraint': 'eu-west-2'}
 
 
@@ -91,7 +106,7 @@ def test_load_is_called(s3, mocker, tmpdir):
     s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
-    matcher.matcher_lambda_handler(get_records(), None)
+    matcher.matcher_lambda_handler(get_consignment_event(), None)
     yara.load.assert_called_once_with("output")
 
 
@@ -102,7 +117,7 @@ def test_correct_output(s3, mocker, tmpdir):
     s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
-    res = matcher.matcher_lambda_handler(get_records(), None)["antivirus"]
+    res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
     assert res["software"] == "yara"
     assert res["softwareVersion"] == yara.__version__
     assert res["databaseVersion"] == "1"
@@ -115,7 +130,7 @@ def test_correct_file_id_provided(s3, mocker, tmpdir):
     s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
-    res = matcher.matcher_lambda_handler(get_records(), None)["antivirus"]
+    res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
     assert res["fileId"] == "fileId"
 
 
@@ -127,7 +142,7 @@ def test_match_found(s3, mocker, tmpdir):
     mocker.patch('yara.load')
 
     yara.load.return_value = MockRulesMatchFound()
-    res = matcher.matcher_lambda_handler(get_records(), None)["antivirus"]
+    res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
     assert res["result"] == "testmatch"
 
 
@@ -138,7 +153,7 @@ def test_no_match_found(s3, mocker, tmpdir):
     s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesNoMatch()
-    res = matcher.matcher_lambda_handler(get_records(), None)["antivirus"]
+    res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
     assert res["result"] == ""
 
 
@@ -149,7 +164,39 @@ def test_multiple_match_found(s3, mocker, tmpdir):
     s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMultipleMatchFound()
-    res = matcher.matcher_lambda_handler(get_records(), None)["antivirus"]
+    res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
+    assert res["result"] == "testmatch\ntestmatch"
+
+
+def test_match_found_metadata(s3, mocker, tmpdir):
+    set_environment(tmpdir)
+    s3.create_bucket(Bucket=metadata_source_location.bucket, CreateBucketConfiguration=location)
+    s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
+    s3.Object(metadata_source_location.bucket, metadata_source_location.key).put(Body="test")
+    mocker.patch('yara.load')
+    yara.load.return_value = MockRulesMatchFound()
+    res = matcher.matcher_lambda_handler(get_metadata_event(), None)["antivirus"]
+    assert res["result"] == "testmatch"
+
+
+def test_no_match_found_metadata(s3, mocker, tmpdir):
+    set_environment(tmpdir)
+    s3.create_bucket(Bucket=metadata_source_location.bucket, CreateBucketConfiguration=location)
+    s3.Object(metadata_source_location.bucket, metadata_source_location.key).put(Body="test")
+    mocker.patch('yara.load')
+    yara.load.return_value = MockRulesNoMatch()
+    res = matcher.matcher_lambda_handler(get_metadata_event(), None)["antivirus"]
+    assert res["result"] == ""
+
+
+def test_multiple_match_found_metadata(s3, mocker, tmpdir):
+    set_environment(tmpdir)
+    s3.create_bucket(Bucket=metadata_source_location.bucket, CreateBucketConfiguration=location)
+    s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
+    s3.Object(metadata_source_location.bucket, metadata_source_location.key).put(Body="test")
+    mocker.patch('yara.load')
+    yara.load.return_value = MockRulesMultipleMatchFound()
+    res = matcher.matcher_lambda_handler(get_metadata_event(), None)["antivirus"]
     assert res["result"] == "testmatch\ntestmatch"
 
 
@@ -161,7 +208,7 @@ def test_bucket_not_found(s3, mocker, tmpdir):
         s3.Object("anotherbucket", tdr_standard_dirty_key).put(Body="test")
         mocker.patch('yara.load')
         yara.load.return_value = MockRulesNoMatch()
-        matcher.matcher_lambda_handler(get_records(), None)
+        matcher.matcher_lambda_handler(get_consignment_event(), None)
     assert err.typename == 'NoSuchBucket'
 
 
@@ -173,7 +220,7 @@ def test_key_not_found(s3, mocker, tmpdir):
         s3.Object(dirty_s3_bucket, "test0").put(Body="test")
         mocker.patch('yara.load')
         yara.load.return_value = MockRulesNoMatch()
-        matcher.matcher_lambda_handler(get_records(), None)
+        matcher.matcher_lambda_handler(get_consignment_event(), None)
     assert err.typename == 'ClientError'
 
 
@@ -184,7 +231,7 @@ def test_match_fails(s3, mocker, tmpdir):
         s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
         mocker.patch('yara.load')
         yara.load.return_value = MockRulesMatchError()
-        matcher.matcher_lambda_handler(get_records(), None)
+        matcher.matcher_lambda_handler(get_consignment_event(), None)
 
 
 def test_copy_to_quarantine(s3, s3_client, mocker, tmpdir):
@@ -194,10 +241,21 @@ def test_copy_to_quarantine(s3, s3_client, mocker, tmpdir):
     s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
-    matcher.matcher_lambda_handler(get_records(), None)
+    matcher.matcher_lambda_handler(get_consignment_event(), None)
     res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=tdr_standard_copy_key)
     assert res["Body"].read() == b"test"
 
+
+def test_copy_to_quarantine_with_match_metadata(s3, s3_client, mocker, tmpdir):
+    set_environment(tmpdir)
+    s3.create_bucket(Bucket=metadata_source_location.bucket, CreateBucketConfiguration=location)
+    s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
+    s3.Object(metadata_source_location.bucket, metadata_source_location.key).put(Body="test")
+    mocker.patch('yara.load')
+    yara.load.return_value = MockRulesMatchFound()
+    matcher.matcher_lambda_handler(get_metadata_event(), None)
+    res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=tdr_metadata_copy_key)
+    assert res["Body"].read() == b"test"
 
 def test_no_copy_to_quarantine_clean(s3, s3_client, mocker, tmpdir):
     with pytest.raises(ClientError) as err:
@@ -208,7 +266,7 @@ def test_no_copy_to_quarantine_clean(s3, s3_client, mocker, tmpdir):
         s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
         mocker.patch('yara.load')
         yara.load.return_value = MockRulesNoMatch()
-        matcher.matcher_lambda_handler(get_records(), None)
+        matcher.matcher_lambda_handler(get_consignment_event(), None)
         s3_client.get_object(Bucket=quarantine_s3_bucket, Key="consignmentId")
     assert err.typename == 'NoSuchKey'
 
@@ -220,9 +278,22 @@ def test_copy_to_clean_bucket(s3, s3_client, mocker, tmpdir):
     s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesNoMatch()
-    matcher.matcher_lambda_handler(get_records(), None)
+    matcher.matcher_lambda_handler(get_consignment_event(), None)
     res = s3_client.get_object(Bucket=clean_s3_bucket, Key=tdr_standard_copy_key)
     assert res["Body"].read() == b"test"
+
+
+def test_no_copy_to_clean_without_match_metadata(s3, s3_client, mocker, tmpdir):
+    with pytest.raises(ClientError) as err:
+        set_environment(tmpdir)
+        s3.create_bucket(Bucket=metadata_source_location.bucket, CreateBucketConfiguration=location)
+        s3.create_bucket(Bucket=clean_s3_bucket, CreateBucketConfiguration=location)
+        s3.Object(metadata_source_location.bucket, metadata_source_location.key).put(Body="test")
+        mocker.patch('yara.load')
+        yara.load.return_value = MockRulesNoMatch()
+        matcher.matcher_lambda_handler(get_metadata_event(), None)
+        s3_client.get_object(Bucket=clean_s3_bucket, Key="consignmentId")
+    assert err.typename == 'NoSuchKey'
 
 
 def test_no_copy_to_clean_with_match(s3, s3_client, mocker, tmpdir):
@@ -234,6 +305,6 @@ def test_no_copy_to_clean_with_match(s3, s3_client, mocker, tmpdir):
         s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
         mocker.patch('yara.load')
         yara.load.return_value = MockRulesMatchFound()
-        matcher.matcher_lambda_handler(get_records(), None)
+        matcher.matcher_lambda_handler(get_consignment_event(), None)
         s3_client.get_object(Bucket=clean_s3_bucket, Key=tdr_standard_copy_key)
     assert err.typename == 'NoSuchKey'
