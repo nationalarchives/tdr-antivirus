@@ -1,5 +1,54 @@
 This is the code and configuration to carry out the antivirus checks on a single file from S3
 
+## Configuration Parameters
+
+Lambda takes parameters to configure the scanning options.
+
+| Parameter Name           | Optional | Default Value                                         | Description                                                                                      | Example                     | 
+|--------------------------|----------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------|-----------------------------|
+| consignment_id           | false    | N/A                                                   | TDR UUID for the consignment the object to scan belongs to                                       |                             |
+| file_id                  | false    | N/A                                                   | Name of the object to scan                                                                       |                             |
+| user_id                  | true     | `None`                                                | TDR UUID of the user who uploaded the object to scan                                             |                             |
+| original_path            | true     | `None`                                                | Original path to the object to scan. Used to create local version of object for scanning         |                             |
+| scan_type                | true     | N/A                                                   | **Deprecated**. Use combination of optional parameters to set configuration. Type of scan to run | `metadata` / `consignment`  |
+| s3_source_bucket         | true     | `tdr-upload-files-cloudfront-dirty-{tdr environment}` | S3 bucket containing the object to scan                                                          | `{some AWS S3 bucket name}` |
+| s3_source_bucket_key     | true     | `{user_id}/{consignment_id}/{file_id}`                | S3 bucket key of the object to scan                                                              |                             |
+| s3_source_bucket_key     | true     | `{user_id}/{consignment_id}/{file_id}`                | S3 bucket key of the object to scan                                                              |                             |
+| s3_upload_bucket         | true     | `tdr-upload-files-{tdr environment}`                  | S3 bucket to copy clean objects to                                                               |                             |
+| s3_upload_bucket_key     | true     | `{consignment_id}/{file_id}`                          | S3 bucket key of clean object                                                                    |                             |
+| s3_quarantine_bucket     | true     | `tdr-upload-files-quarantine-{tdr environment}`       | S3 bucket to copy infected objects to                                                            |                             |
+| s3_quarantine_bucket_key | true     | `{consignment_id}/{file_id}`                          | S3 bucket key of infected object                                                                 |                             |
+
+
+### Example Configuration
+
+Object to scan details:
+* **Consignment Id**: `bf2181c7-70e4-448d-b122-be561d0e797a`
+* **File Id**: `myFileToScan.txt`
+* **Original Path**: `identifier1/identifer2/myFileToScan.txt`
+* **s3 Source bucket name**: `some-source-bucket`
+* **s3 source object key**: same as original path
+* **s3 clean bucket name**: `some-clean-bucket`
+* **s3 clean object key**: same as s3 source object key
+* **s3 quarantine bucket name**: `tdr-upload-files-quarantine-{tdr environment}`
+* **s3 quarantine object key**: same as s3 source object key
+
+Event configuration to support the above would be as follows:
+
+```json
+    {
+        "consignment_id": "bf2181c7-70e4-448d-b122-be561d0e797a",
+        "file_id": "myFileToScan.txt",
+        "original_path": "identifier1/identifer2/myFileToScan.txt",
+        "s3_source_bucket": "some-source-bucket",
+        "s3_source_bucket_key": "identifier1/identifer2/myFileToScan.txt",
+        "s3_upload_bucket": "some-clean-bucket",
+        "s3_upload_bucket_key": "identifier1/identifer2/myFileToScan.txt",        
+        "s3_quarantine_bucket_key": "identifier1/identifer2/myFileToScan.txt"
+   }
+```
+
+
 ## Building the lambda function
 
 The lambda function is built by GitHub actions. There are three actions in three yml files.
