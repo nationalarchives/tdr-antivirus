@@ -101,7 +101,6 @@ def build_settings(event: dict) -> VirusCheckSettings:
     # S3 bucket key of infected object
     s3_quarantine_bucket_key = event.get("s3QuarantineBucketKey", f"{consignment_id}/{file_id}")
 
-
     if scan_type == ScanType.metadata:
         return VirusCheckSettings(
             file_id=file_id,
@@ -123,7 +122,10 @@ def build_settings(event: dict) -> VirusCheckSettings:
                 bucket=s3_source_bucket,
                 key=s3_source_bucket_key
             ),
-            s3_quarantine_location=s3_location(s3_quarantine_bucket, s3_quarantine_bucket_key),
+            s3_quarantine_location=S3Location(
+                bucket=s3_quarantine_bucket,
+                key=s3_quarantine_bucket_key
+            ),
             s3_upload_location=s3_location(s3_upload_bucket, s3_upload_bucket_key),
             local_download_location=f"{root_path}/{original_path}"
         )

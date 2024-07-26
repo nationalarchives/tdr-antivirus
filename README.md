@@ -13,12 +13,9 @@ Lambda takes parameters to configure the scanning options.
 | scan_type                | true     | N/A                                                   | **Deprecated**. Use combination of optional parameters to set configuration. Type of scan to run | `metadata` / `consignment`  |
 | s3_source_bucket         | true     | `tdr-upload-files-cloudfront-dirty-{tdr environment}` | S3 bucket containing the object to scan                                                          | `{some AWS S3 bucket name}` |
 | s3_source_bucket_key     | true     | `{user_id}/{consignment_id}/{file_id}`                | S3 bucket key of the object to scan                                                              |                             |
-| s3_source_bucket_key     | true     | `{user_id}/{consignment_id}/{file_id}`                | S3 bucket key of the object to scan                                                              |                             |
 | s3_upload_bucket         | true     | `tdr-upload-files-{tdr environment}`                  | S3 bucket to copy clean objects to                                                               |                             |
 | s3_upload_bucket_key     | true     | `{consignment_id}/{file_id}`                          | S3 bucket key of clean object                                                                    |                             |
 | s3_quarantine_bucket     | true     | `tdr-upload-files-quarantine-{tdr environment}`       | S3 bucket to copy infected objects to                                                            |                             |
-| s3_quarantine_bucket_key | true     | `{consignment_id}/{file_id}`                          | S3 bucket key of infected object                                                                 |                             |
-
 
 ### Example Configuration
 
@@ -31,20 +28,18 @@ Object to scan details:
 * **s3 clean bucket name**: `some-clean-bucket`
 * **s3 clean object key**: same as s3 source object key
 * **s3 quarantine bucket name**: `tdr-upload-files-quarantine-{tdr environment}`
-* **s3 quarantine object key**: same as s3 source object key
 
 Event configuration to support the above would be as follows:
 
 ```json
     {
-        "consignment_id": "bf2181c7-70e4-448d-b122-be561d0e797a",
-        "file_id": "myFileToScan.txt",
-        "original_path": "identifier1/identifer2/myFileToScan.txt",
-        "s3_source_bucket": "some-source-bucket",
-        "s3_source_bucket_key": "identifier1/identifer2/myFileToScan.txt",
-        "s3_upload_bucket": "some-clean-bucket",
-        "s3_upload_bucket_key": "identifier1/identifer2/myFileToScan.txt",        
-        "s3_quarantine_bucket_key": "identifier1/identifer2/myFileToScan.txt"
+        "consignmentId": "bf2181c7-70e4-448d-b122-be561d0e797a",
+        "fileId": "myFileToScan.txt",
+        "originalPath": "identifier1/identifer2/myFileToScan.txt",
+        "s3SourceBucket": "some-source-bucket",
+        "s3SourceBucketKey": "identifier1/identifer2/myFileToScan.txt",
+        "s3UploadBucket": "some-clean-bucket",
+        "s3UploadBucketKey": "identifier1/identifer2/myFileToScan.txt"        
    }
 ```
 
