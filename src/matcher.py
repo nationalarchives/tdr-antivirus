@@ -71,13 +71,36 @@ class ScanType(Enum):
 
 
 def build_settings(event: dict) -> VirusCheckSettings:
-    scan_type = ScanType[event.get("scanType", "consignment")]
-    consignment_id = event["consignmentId"]
-    file_id = event["fileId"]
-
+    # TDR environment
     environment = os.environ["ENVIRONMENT"]
+    # AWS EFS root directory where object to scan is copied to for scanning
     efs_root_location = os.environ["ROOT_DIRECTORY"]
+    # TDR UUID for the consignment the object to scan belongs to
+    consignment_id = event["consignmentId"]
+    # TDR UUID of the object to scan
+    file_id = event["fileId"]
+    # Local path for copying object to scan
     root_path = f"{efs_root_location}/{consignment_id}"
+
+    # Original path to the object
+    original_path = event.get("originalPath", None)
+    # UUID of the user who uploaded the object to scan
+    user_id = event.get("userId", None)
+    # Type of scan: deprecated should use optional parameters
+    scan_type = ScanType[event.get("scanType", "consignment")]
+    # S3 bucket containing the object to scan
+    s3_source_bucket = event.get("s3SourceBucket", "tdr-upload-files-cloudfront-dirty-" + environment)
+    # S3 bucket key of the object to scan
+    s3_source_bucket_key = event.get("s3SourceBucketKey", f"{user_id}/{consignment_id}/{file_id}")
+    # S3 bucket to copy clean objects to
+    s3_upload_bucket = event.get("s3UploadBucket", "tdr-upload-files-" + environment)
+    # S3 bucket key of clean object
+    s3_upload_bucket_key = event.get("s3UploadBucketKey", f"{consignment_id}/{file_id}")
+    # S3 bucket to copy infected objects to
+    s3_quarantine_bucket = event.get("s3QuarantineBucket", "tdr-upload-files-quarantine-" + environment)
+    # S3 bucket key of infected object
+    s3_quarantine_bucket_key = event.get("s3QuarantineBucketKey", f"{consignment_id}/{file_id}")
+
     if scan_type == ScanType.metadata:
         return VirusCheckSettings(
             file_id=file_id,
@@ -93,24 +116,29 @@ def build_settings(event: dict) -> VirusCheckSettings:
             local_download_location=f"{root_path}/metadata/{file_id}"
         )
     else:
-        user_id = event["userId"]
-        original_path = event["originalPath"]
         return VirusCheckSettings(
             file_id=file_id,
             s3_source_location=S3Location(
-                bucket="tdr-upload-files-cloudfront-dirty-" + environment,
-                key=f"{user_id}/{consignment_id}/{file_id}"
+                bucket=s3_source_bucket,
+                key=s3_source_bucket_key
             ),
             s3_quarantine_location=S3Location(
-                bucket="tdr-upload-files-quarantine-" + environment,
-                key=f"{consignment_id}/{file_id}"
+                bucket=s3_quarantine_bucket,
+                key=s3_quarantine_bucket_key
             ),
-            s3_upload_location=S3Location(
-                bucket="tdr-upload-files-" + environment,
-                key=f"{consignment_id}/{file_id}"
-            ),
+            s3_upload_location=s3_location(s3_upload_bucket, s3_upload_bucket_key),
             local_download_location=f"{root_path}/{original_path}"
         )
+
+
+def s3_location(s3_bucket, s3_bucket_key):
+    if s3_bucket != None and s3_bucket_key != None:
+        return S3Location(
+            bucket=s3_bucket,
+            key=s3_bucket_key
+        )
+    else:
+        None
 
 
 def download_file_if_not_already_present(settings):
