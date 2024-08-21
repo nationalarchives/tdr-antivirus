@@ -13,8 +13,8 @@ Lambda takes parameters to configure the scanning options.
 | scan_type                | true     | N/A                                                   | **Deprecated**. Use combination of optional parameters to set configuration. Type of scan to run | `metadata` / `consignment`  |
 | s3_source_bucket         | true     | `tdr-upload-files-cloudfront-dirty-{tdr environment}` | S3 bucket containing the object to scan                                                          | `{some AWS S3 bucket name}` |
 | s3_source_bucket_key     | true     | `{user_id}/{consignment_id}/{file_id}`                | S3 bucket key of the object to scan                                                              |                             |
-| s3_upload_bucket         | true     | `tdr-upload-files-{tdr environment}`                  | S3 bucket to copy clean objects to                                                               |                             |
-| s3_upload_bucket_key     | true     | `{consignment_id}/{file_id}`                          | S3 bucket key of clean object                                                                    |                             |
+| s3_upload_bucket         | true     | `tdr-upload-files-{tdr environment}`                  | S3 bucket to copy clean objects to. If empty value then no copy occurs                           |                             |
+| s3_upload_bucket_key     | true     | `{consignment_id}/{file_id}`                          | S3 bucket key of clean object. If empty value then no copy occurs                                |                             |
 | s3_quarantine_bucket     | true     | `tdr-upload-files-quarantine-{tdr environment}`       | S3 bucket to copy infected objects to                                                            |                             |
 
 ### Example Configuration
