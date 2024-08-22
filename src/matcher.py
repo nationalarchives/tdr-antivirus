@@ -132,7 +132,7 @@ def build_settings(event: dict) -> VirusCheckSettings:
 
 
 def s3_location(s3_bucket, s3_bucket_key):
-    if s3_bucket != None and s3_bucket_key != None:
+    if s3_bucket != "" and s3_bucket_key != "":
         return S3Location(
             bucket=s3_bucket,
             key=s3_bucket_key
