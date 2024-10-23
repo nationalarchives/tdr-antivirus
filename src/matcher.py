@@ -145,6 +145,7 @@ def download_file_if_not_already_present(settings):
     if not exists(settings.local_download_location):
         download_file(settings.s3_source_location.bucket, settings.s3_source_location.key, settings.local_download_location)
     else:
+        s3_client = boto3.client("s3")
         s3_mtime = s3_client.head_object(Bucket=settings.s3_source_location.bucket, Key=settings.s3_source_location.key)['LastModified'].timestamp()
         local_mtime = os.stat(settings.local_download_location).st_mtime
         if local_mtime > s3_mtime:
