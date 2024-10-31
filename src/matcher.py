@@ -152,7 +152,6 @@ def download_file_if_not_already_present(settings):
             print(f"File {settings.local_download_location} already exists in local storage, using this instead of downloading from S3.")
         else:
             download_file(settings.s3_source_location.bucket, settings.s3_source_location.key, settings.local_download_location)
-            
 
 
 def download_file(bucket, key, location):

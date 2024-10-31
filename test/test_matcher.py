@@ -1,11 +1,12 @@
+import os
+
 import boto3
 import pytest
-from moto import mock_s3
-import os
-from src import matcher
 import yara
 from botocore.errorfactory import ClientError
+from moto import mock_s3
 
+from src import matcher
 from src.matcher import S3Location
 
 
@@ -64,28 +65,16 @@ class MockRulesMatchError:
 
 
 def get_consignment_event():
-    return {
-        "userId": "userId",
-        "consignmentId": "consignmentId",
-        "fileId": "fileId",
-        "originalPath": "original/path"
-    }
+    return {"userId": "userId", "consignmentId": "consignmentId", "fileId": "fileId", "originalPath": "original/path"}
 
 
 def get_metadata_event():
-    return {
-        "scanType": "metadata",
-        "consignmentId": "consignmentId",
-        "fileId": "draft-metadata.csv",
-    }
+    return {"scanType": "metadata", "consignmentId": "consignmentId", "fileId": "draft-metadata.csv", }
 
 
 dirty_s3_bucket = 'tdr-upload-files-cloudfront-dirty-intg'
 quarantine_s3_bucket = 'tdr-upload-files-quarantine-intg'
-metadata_source_location = S3Location(
-    bucket='tdr-draft-metadata-intg',
-    key='consignmentId/draft-metadata.csv'
-)
+metadata_source_location = S3Location(bucket='tdr-draft-metadata-intg', key='consignmentId/draft-metadata.csv')
 clean_s3_bucket = 'tdr-upload-files-intg'
 tdr_standard_dirty_key = "userId/consignmentId/fileId"
 tdr_standard_copy_key = "consignmentId/fileId"
@@ -257,6 +246,7 @@ def test_copy_to_quarantine_with_match_metadata(s3, s3_client, mocker, tmpdir):
     res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=tdr_metadata_copy_key)
     assert res["Body"].read() == b"test"
 
+
 def test_no_copy_to_quarantine_clean(s3, s3_client, mocker, tmpdir):
     with pytest.raises(ClientError) as err:
         set_environment(tmpdir)
@@ -308,3 +298,79 @@ def test_no_copy_to_clean_with_match(s3, s3_client, mocker, tmpdir):
         matcher.matcher_lambda_handler(get_consignment_event(), None)
         s3_client.get_object(Bucket=clean_s3_bucket, Key=tdr_standard_copy_key)
     assert err.typename == 'NoSuchKey'
+
+
+import time
+from src.matcher import download_file_if_not_already_present
+
+
+@pytest.fixture(scope='function')
+def s3_bucket(s3):
+    s3.create_bucket(Bucket=metadata_source_location.bucket, CreateBucketConfiguration=location)
+    return s3.Bucket(metadata_source_location.bucket)
+
+
+def test_download_if_not_present(s3_bucket, mocker, tmpdir):
+    settings = MockSettings(tmpdir, metadata_source_location.bucket, tdr_standard_dirty_key)
+    s3_bucket.put_object(Key=tdr_standard_dirty_key, Body="test content")
+
+    # Mock download_file to observe behavior
+    download_file_mock = mocker.patch("src.matcher.download_file")
+
+    # Run
+    download_file_if_not_already_present(settings)
+
+    # Assert
+    download_file_mock.assert_called_once_with(settings.s3_source_location.bucket, settings.s3_source_location.key,
+                                               settings.local_download_location)
+
+
+def test_no_download_if_local_is_newer(s3_bucket, mocker, tmpdir):
+    settings = MockSettings(tmpdir, metadata_source_location.bucket, tdr_standard_dirty_key)
+    local_file_path = settings.local_download_location
+
+    # Create a local file and set it to be newer than the S3 file
+    with open(local_file_path, "w") as f:
+        f.write("local test content")
+    os.utime(local_file_path, (time.time() + 10000, time.time() + 10000))  # Set future modified time
+
+    # Put older file on S3
+    s3_bucket.put_object(Key=tdr_standard_dirty_key, Body="test content")
+
+    # Mock download_file to observe behavior
+    download_file_mock = mocker.patch("src.matcher.download_file")
+
+    # Run
+    download_file_if_not_already_present(settings)
+
+    # Assert that download_file is not called, as local file is newer
+    download_file_mock.assert_not_called()
+
+
+def test_download_if_s3_is_newer(s3_bucket, mocker, tmpdir):
+    settings = MockSettings(tmpdir, metadata_source_location.bucket, tdr_standard_dirty_key)
+    local_file_path = settings.local_download_location
+
+    # Create a local file and set it to be older than the S3 file
+    with open(local_file_path, "w") as f:
+        f.write("local test content")
+    os.utime(local_file_path, (time.time() - 10000, time.time() - 10000))  # Set past modified time
+
+    # Put newer file on S3
+    s3_bucket.put_object(Key=tdr_standard_dirty_key, Body="updated test content")
+
+    # Mock download_file to observe behavior
+    download_file_mock = mocker.patch("src.matcher.download_file")
+
+    # Run
+    download_file_if_not_already_present(settings)
+
+    # Assert that download_file is called, as S3 file is newer
+    download_file_mock.assert_called_once_with(settings.s3_source_location.bucket, settings.s3_source_location.key,
+                                               settings.local_download_location)
+
+
+class MockSettings:
+    def __init__(self, tmpdir, bucket, key):
+        self.local_download_location = os.path.join(tmpdir, "tests")
+        self.s3_source_location = S3Location(bucket=bucket, key=key)
