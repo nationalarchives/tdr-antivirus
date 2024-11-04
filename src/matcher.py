@@ -142,13 +142,24 @@ def s3_location(s3_bucket, s3_bucket_key):
 
 
 def download_file_if_not_already_present(settings):
-    s3_resource = boto3.resource("s3")
-    download_directory = "/".join(settings.local_download_location.split("/")[:-1])
-    if not exists(download_directory):
-        os.makedirs(download_directory)
     if not exists(settings.local_download_location):
-        bucket = s3_resource.Bucket(settings.s3_source_location.bucket)
-        bucket.download_file(settings.s3_source_location.key, settings.local_download_location)
+        download_file(settings.s3_source_location.bucket, settings.s3_source_location.key, settings.local_download_location)
+    else:
+        s3_client = boto3.client("s3")
+        s3_mtime = s3_client.head_object(Bucket=settings.s3_source_location.bucket, Key=settings.s3_source_location.key)['LastModified'].timestamp()
+        local_mtime = os.stat(settings.local_download_location).st_mtime
+        if local_mtime > s3_mtime:
+            print(f"File {settings.local_download_location} already exists in local storage, using this instead of downloading from S3.")
+        else:
+            download_file(settings.s3_source_location.bucket, settings.s3_source_location.key, settings.local_download_location)
+
+
+def download_file(bucket, key, location):
+    s3_client = boto3.client("s3")
+    download_directory = "/".join(location.split("/")[:-1])
+    os.makedirs(download_directory, exist_ok=True)
+    print(f"Downloading object s3://{bucket}/{key} to {location}.")
+    s3_client.download_file(bucket, key, location)
 
 
 def antivirus_results_dict(file_id, results, time):
