@@ -39,6 +39,23 @@ def s3_bucket(s3):
     return s3.Bucket(metadata_source_location.bucket)
 
 
+class MockGuardDutyThreatFound:
+
+    @staticmethod
+    def put_object_key(s3, object_key):
+        s3.put_object_tagging(
+            Bucket=f'{dirty_s3_bucket}',
+            Key=f'{object_key}',
+            Tagging={
+                'TagSet': [
+                    {
+                        'Key': 'GuardDutyMalwareScanStatus',
+                        'Value': 'THREATS_FOUND'
+                    },
+                ]
+            })
+
+
 class MockMatch:
     rule = "testmatch"
 
@@ -90,6 +107,19 @@ def get_metadata_event():
         "consignmentId": "consignmentId",
         "fileId": "draft-metadata.csv",
     }
+
+def mock_guard_duty_threat_found(s3_client):
+    s3_client.put_object_tagging(
+        Bucket=dirty_s3_bucket,
+        Key=tdr_standard_dirty_key,
+        Tagging={
+            'TagSet': [
+                {
+                    'Key': 'GuardDutyMalwareScanStatus',
+                    'Value': 'THREATS_FOUND'
+                },
+            ]
+        })
 
 
 dirty_s3_bucket = 'tdr-upload-files-cloudfront-dirty-intg'
@@ -156,6 +186,30 @@ def test_match_found(s3, mocker, tmpdir):
     yara.load.return_value = MockRulesMatchFound()
     res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
     assert res["result"] == "testmatch"
+
+
+def test_guard_duty_threat_found(s3, mocker, tmpdir, s3_client):
+    set_environment(tmpdir)
+    s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
+    s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
+    s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
+    mock_guard_duty_threat_found(s3_client)
+    mocker.patch('yara.load')
+    yara.load.return_value = MockRulesNoMatch()
+    res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
+    assert res["result"] == "awsGuardDutyThreatFound"
+
+
+def test_yara_match_guard_duty_threat_found(s3, mocker, tmpdir, s3_client):
+    set_environment(tmpdir)
+    s3.create_bucket(Bucket=dirty_s3_bucket, CreateBucketConfiguration=location)
+    s3.create_bucket(Bucket=quarantine_s3_bucket, CreateBucketConfiguration=location)
+    s3.Object(dirty_s3_bucket, tdr_standard_dirty_key).put(Body="test")
+    mocker.patch('yara.load')
+    mock_guard_duty_threat_found(s3_client)
+    yara.load.return_value = MockRulesMatchFound()
+    res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
+    assert res["result"] == "testmatch\nawsGuardDutyThreatFound"
 
 
 def test_no_match_found(s3, mocker, tmpdir):

@@ -15,6 +15,24 @@ logger = logging.getLogger('matcher')
 logger.setLevel(INFO)
 
 
+def get_object_tagging(s3_client, bucket, object_key):
+    return s3_client.get_object_tagging(
+        Bucket=f'{bucket}',
+        Key=f'{object_key}'
+    )
+
+
+def guard_duty_threat_found(s3_client, bucket, object_key):
+    response = get_object_tagging(s3_client, bucket, object_key)
+    tag_set = response['TagSet']
+    threats = []
+    for tag in tag_set:
+        tag_value = tag['Value']
+        if tag_value == "THREATS_FOUND":
+            threats = ["awsGuardDutyThreatFound"]
+    return threats
+
+
 def matcher_lambda_handler(event, lambda_context):
     handler_trigger_time = datetime.today().replace(tzinfo=timezone.utc).timestamp() * 1000
     print(event)
@@ -24,8 +42,9 @@ def matcher_lambda_handler(event, lambda_context):
     download_file_if_not_already_present(settings)
     rules = yara.load("output")
     matched_antivirus_rules = [x.rule for x in rules.match(settings.local_download_location)]
+    aws_guard_duty_threat_found = guard_duty_threat_found(s3_client, settings.s3_source_location.bucket, settings.s3_source_location.key)
 
-    if len(matched_antivirus_rules) > 0:
+    if len(matched_antivirus_rules) > 0 or len(aws_guard_duty_threat_found) > 0:
         if settings.s3_quarantine_location is not None:
             s3_client.copy(
                 settings.s3_source_location.as_dict(),
@@ -41,8 +60,9 @@ def matcher_lambda_handler(event, lambda_context):
             )
 
     logger.info("Key %s processed", settings.s3_source_location.key)
+    results = matched_antivirus_rules + aws_guard_duty_threat_found
 
-    return antivirus_results_dict(settings.file_id, matched_antivirus_rules, handler_trigger_time)
+    return antivirus_results_dict(settings.file_id, results, handler_trigger_time)
 
 
 @dataclass(frozen=True)
@@ -166,7 +186,8 @@ def antivirus_results_dict(file_id, results, time):
     return {
         "antivirus":
             {
-                "software": "yara", "softwareVersion": yara.__version__,
+                "software": "yara",
+                "softwareVersion": yara.__version__,
                 "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
                 "result": "\n".join(results),
                 "datetime": int(time),
