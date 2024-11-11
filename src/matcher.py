@@ -1,36 +1,21 @@
-import yara
-import boto3
 import logging
-from datetime import datetime, timezone
 import os
-from os.path import exists
 from dataclasses import dataclass
-from typing import Optional
+from datetime import datetime, timezone
 from enum import Enum
+from typing import Optional
+
+import boto3
+import yara
+
+from src.download_file import download_file_if_not_already_present
+from src.guardduty_malware_scan import guard_duty_threat_found
 
 FORMAT = '%(asctime)-15s %(message)s'
 INFO = 20
 logging.basicConfig(format=FORMAT)
 logger = logging.getLogger('matcher')
 logger.setLevel(INFO)
-
-
-def get_object_tagging(s3_client, bucket, object_key):
-    return s3_client.get_object_tagging(
-        Bucket=f'{bucket}',
-        Key=f'{object_key}'
-    )
-
-
-def guard_duty_threat_found(s3_client, bucket, object_key):
-    response = get_object_tagging(s3_client, bucket, object_key)
-    tag_set = response['TagSet']
-    threats = []
-    for tag in tag_set:
-        tag_value = tag['Value']
-        if tag_value == "THREATS_FOUND":
-            threats = ["awsGuardDutyThreatFound"]
-    return threats
 
 
 def matcher_lambda_handler(event, lambda_context):
@@ -42,7 +27,8 @@ def matcher_lambda_handler(event, lambda_context):
     download_file_if_not_already_present(settings)
     rules = yara.load("output")
     matched_antivirus_rules = [x.rule for x in rules.match(settings.local_download_location)]
-    aws_guard_duty_threat_found = guard_duty_threat_found(s3_client, settings.s3_source_location.bucket, settings.s3_source_location.key)
+    aws_guard_duty_threat_found = (
+        guard_duty_threat_found(s3_client, settings.s3_source_location.bucket, settings.s3_source_location.key)) if settings.guard_duty_malware_scan_enabled else []
 
     if len(matched_antivirus_rules) > 0 or len(aws_guard_duty_threat_found) > 0:
         if settings.s3_quarantine_location is not None:
@@ -83,6 +69,7 @@ class VirusCheckSettings:
     s3_quarantine_location: Optional[S3Location]
     s3_upload_location: Optional[S3Location]
     local_download_location: str
+    guard_duty_malware_scan_enabled: bool
 
 
 class ScanType(Enum):
@@ -96,6 +83,7 @@ def build_settings(event: dict) -> VirusCheckSettings:
     # AWS EFS root directory where object to scan is copied to for scanning
     efs_root_location = os.environ["ROOT_DIRECTORY"]
     # TDR UUID for the consignment the object to scan belongs to
+    guard_duty_malware_scan_enabled = event.get("guardDutyMalwareScanEnable", True)
     consignment_id = event["consignmentId"]
     # TDR UUID of the object to scan
     file_id = event["fileId"]
@@ -133,7 +121,8 @@ def build_settings(event: dict) -> VirusCheckSettings:
                 key=f"{consignment_id}/metadata/{file_id}"
             ),
             s3_upload_location=None,
-            local_download_location=f"{root_path}/metadata/{file_id}"
+            local_download_location=f"{root_path}/metadata/{file_id}",
+            guard_duty_malware_scan_enabled=guard_duty_malware_scan_enabled
         )
     else:
         return VirusCheckSettings(
@@ -147,7 +136,8 @@ def build_settings(event: dict) -> VirusCheckSettings:
                 key=s3_quarantine_bucket_key
             ),
             s3_upload_location=s3_location(s3_upload_bucket, s3_upload_bucket_key),
-            local_download_location=f"{root_path}/{original_path}"
+            local_download_location=f"{root_path}/{original_path}",
+            guard_duty_malware_scan_enabled=guard_duty_malware_scan_enabled
         )
 
 
@@ -161,28 +151,7 @@ def s3_location(s3_bucket, s3_bucket_key):
         None
 
 
-def download_file_if_not_already_present(settings):
-    if not exists(settings.local_download_location):
-        download_file(settings.s3_source_location.bucket, settings.s3_source_location.key, settings.local_download_location)
-    else:
-        s3_client = boto3.client("s3")
-        s3_mtime = s3_client.head_object(Bucket=settings.s3_source_location.bucket, Key=settings.s3_source_location.key)['LastModified'].timestamp()
-        local_mtime = os.stat(settings.local_download_location).st_mtime
-        if local_mtime > s3_mtime:
-            print(f"File {settings.local_download_location} already exists in local storage, using this instead of downloading from S3.")
-        else:
-            download_file(settings.s3_source_location.bucket, settings.s3_source_location.key, settings.local_download_location)
-
-
-def download_file(bucket, key, location):
-    s3_client = boto3.client("s3")
-    download_directory = "/".join(location.split("/")[:-1])
-    os.makedirs(download_directory, exist_ok=True)
-    print(f"Downloading object s3://{bucket}/{key} to {location}.")
-    s3_client.download_file(bucket, key, location)
-
-
-def antivirus_results_dict(file_id, results, time):
+def antivirus_results_dict(file_id, results, handler_trigger_time):
     return {
         "antivirus":
             {
@@ -190,7 +159,7 @@ def antivirus_results_dict(file_id, results, time):
                 "softwareVersion": yara.__version__,
                 "databaseVersion": os.environ["AWS_LAMBDA_FUNCTION_VERSION"],
                 "result": "\n".join(results),
-                "datetime": int(time),
+                "datetime": int(handler_trigger_time),
                 "fileId": file_id
             }
     }
