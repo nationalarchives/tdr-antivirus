@@ -83,7 +83,7 @@ def build_settings(event: dict) -> VirusCheckSettings:
     # AWS EFS root directory where object to scan is copied to for scanning
     efs_root_location = os.environ["ROOT_DIRECTORY"]
     # TDR UUID for the consignment the object to scan belongs to
-    guard_duty_malware_scan_enabled = event.get("guardDutyMalwareScanEnable", True)
+    guard_duty_malware_scan_enabled = event.get("guardDutyMalwareScanEnabled", True)
     consignment_id = event["consignmentId"]
     # TDR UUID of the object to scan
     file_id = event["fileId"]
