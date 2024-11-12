@@ -92,6 +92,15 @@ def get_metadata_event():
         "fileId": "draft-metadata.csv",
     }
 
+def get_guard_duty_scan_not_enabled_event():
+    return {
+        "userId": "userId",
+        "consignmentId": "consignmentId",
+        "fileId": "fileId",
+        "originalPath": "original/path",
+        "guardDutyMalwareScanEnabled": False
+    }
+
 
 dirty_s3_bucket = 'tdr-upload-files-cloudfront-dirty-intg'
 quarantine_s3_bucket = 'tdr-upload-files-quarantine-intg'
@@ -143,11 +152,21 @@ def test_load_is_called(s3, s3_client, mocker, tmpdir):
     yara.load.assert_called_once_with("output")
 
 
-def test_correct_output(s3, s3_client, mocker, tmpdir):
+def test_correct_output_guard_duty_scan_enabled(s3, s3_client, mocker, tmpdir):
     set_up(s3, s3_client, tmpdir)
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
     res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
+    assert res["software"] == "yara|awsGuardDutyMalwareScan"
+    assert res["softwareVersion"] == yara.__version__
+    assert res["databaseVersion"] == "1"
+
+
+def test_correct_output_guard_duty_scan_not_enabled(s3, s3_client, mocker, tmpdir):
+    set_up(s3, s3_client, tmpdir)
+    mocker.patch('yara.load')
+    yara.load.return_value = MockRulesMatchFound()
+    res = matcher.matcher_lambda_handler(get_guard_duty_scan_not_enabled_event(), None)["antivirus"]
     assert res["software"] == "yara"
     assert res["softwareVersion"] == yara.__version__
     assert res["databaseVersion"] == "1"
@@ -166,6 +185,22 @@ def test_match_found(s3, s3_client, mocker, tmpdir):
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
     res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
+    assert res["result"] == "testmatch"
+
+
+def test_guard_duty_scan_not_enabled_threat_found(s3, mocker, tmpdir, s3_client):
+    set_up(s3, s3_client, tmpdir, guard_duty_result='THREATS_FOUND')
+    mocker.patch('yara.load')
+    yara.load.return_value = MockRulesNoMatch()
+    res = matcher.matcher_lambda_handler(get_guard_duty_scan_not_enabled_event(), None)["antivirus"]
+    assert res["result"] == ""
+
+
+def test_match_guard_duty_scan_not_enabled_threat_found(s3, mocker, tmpdir, s3_client):
+    set_up(s3, s3_client, tmpdir, guard_duty_result='THREATS_FOUND')
+    mocker.patch('yara.load')
+    yara.load.return_value = MockRulesMatchFound()
+    res = matcher.matcher_lambda_handler(get_guard_duty_scan_not_enabled_event(), None)["antivirus"]
     assert res["result"] == "testmatch"
 
 
@@ -329,7 +364,7 @@ def test_no_copy_to_clean_with_match(s3, s3_client, mocker, tmpdir):
     assert err.typename == 'NoSuchKey'
 
 
-def test_download_if_not_present(s3_bucket, mocker, tmpdir):
+def test_download_if_not_present(s3, s3_bucket, mocker, tmpdir):
     settings = MockSettings(tmpdir, metadata_source_location.bucket, tdr_standard_dirty_key)
     s3_bucket.put_object(Key=tdr_standard_dirty_key, Body="test content")
     download_file_mock = mocker.patch("src.download_file.download_file")

@@ -29,7 +29,7 @@ Object to scan details:
 * **s3 clean bucket name**: `some-clean-bucket`
 * **s3 clean object key**: same as s3 source object key
 * **s3 quarantine bucket name**: `tdr-upload-files-quarantine-{tdr environment}`
-* ** AWS GuardDuty Malicious Scanning Enable: False
+* **AWS GuardDuty Malicious Scanning Enabled**: False
 
 Event configuration to support the above would be as follows:
 
@@ -42,7 +42,7 @@ Event configuration to support the above would be as follows:
         "s3SourceBucketKey": "identifier1/identifer2/myFileToScan.txt",
         "s3UploadBucket": "some-clean-bucket",
         "s3UploadBucketKey": "identifier1/identifer2/myFileToScan.txt",
-        "guardDutyMalwareScanEnabled": "False"
+        "guardDutyMalwareScanEnabled": False
    }
 ```
 
