@@ -1,21 +1,78 @@
 import logging
 import os
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
+from os.path import exists
+
 
 import boto3
 import yara
 
-from src.download_file import download_file_if_not_already_present
-from src.guard_duty_malware_scan import guard_duty_threat_found
 
+scan_complete_tag_key = 'GuardDutyMalwareScanStatus'
+threat_found = 'THREATS_FOUND'
+threat_found_result = 'awsGuardDutyThreatFound'
+await_delay_secs = os.getenv('POLL_MALWARE_SCAN_COMPLETE_AWAIT_SECS', 5)
 FORMAT = '%(asctime)-15s %(message)s'
 INFO = 20
+
+
 logging.basicConfig(format=FORMAT)
 logger = logging.getLogger('matcher')
 logger.setLevel(INFO)
+
+
+def download_file_if_not_already_present(settings):
+    if not exists(settings.local_download_location):
+        download_file(settings.s3_source_location.bucket, settings.s3_source_location.key, settings.local_download_location)
+    else:
+        s3_client = boto3.client("s3")
+        s3_mtime = s3_client.head_object(Bucket=settings.s3_source_location.bucket, Key=settings.s3_source_location.key)['LastModified'].timestamp()
+        local_mtime = os.stat(settings.local_download_location).st_mtime
+        if local_mtime > s3_mtime:
+            print(f"File {settings.local_download_location} already exists in local storage, using this instead of downloading from S3.")
+        else:
+            download_file(settings.s3_source_location.bucket, settings.s3_source_location.key, settings.local_download_location)
+
+
+def download_file(bucket, key, location):
+    s3_client = boto3.client("s3")
+    download_directory = "/".join(location.split("/")[:-1])
+    os.makedirs(download_directory, exist_ok=True)
+    print(f"Downloading object s3://{bucket}/{key} to {location}.")
+    s3_client.download_file(bucket, key, location)
+
+
+def get_object_tagging(s3_client, bucket, object_key):
+        return s3_client.get_object_tagging(
+            Bucket=f'{bucket}',
+            Key=f'{object_key}'
+        )['TagSet']
+
+
+def poll_guard_duty_scan_complete(s3_client, bucket, object_key):
+    print(f'Polling for GuardDuty scan result: {object_key}')
+    while True:
+        tag_set = get_object_tagging(s3_client, bucket, object_key)
+        for tag in tag_set:
+            tag_key = tag['Key']
+            if tag_key == scan_complete_tag_key:
+                scan_result = tag['Value']
+                print(f'Polling for GuardDuty scan result completed: {object_key}')
+                return scan_result
+        time.sleep(await_delay_secs)
+
+
+def guard_duty_threat_found(s3_client, bucket, object_key):
+    scan_result = poll_guard_duty_scan_complete(s3_client, bucket, object_key)
+    threats = []
+    if scan_result == threat_found:
+        threats = [threat_found_result]
+    return threats
+
 
 
 def matcher_lambda_handler(event, lambda_context):

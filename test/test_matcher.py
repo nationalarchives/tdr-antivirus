@@ -367,7 +367,7 @@ def test_no_copy_to_clean_with_match(s3, s3_client, mocker, tmpdir):
 def test_download_if_not_present(s3, s3_bucket, mocker, tmpdir):
     settings = MockSettings(tmpdir, metadata_source_location.bucket, tdr_standard_dirty_key)
     s3_bucket.put_object(Key=tdr_standard_dirty_key, Body="test content")
-    download_file_mock = mocker.patch("src.download_file.download_file")
+    download_file_mock = mocker.patch("src.matcher.download_file")
     download_file_if_not_already_present(settings)
     download_file_mock.assert_called_once_with(settings.s3_source_location.bucket, settings.s3_source_location.key,
                                                settings.local_download_location)
@@ -380,7 +380,7 @@ def test_no_download_if_local_is_newer(s3_bucket, mocker, tmpdir):
         f.write("local test content")
     os.utime(local_file_path, (time.time() + 10000, time.time() + 10000))  # Set future modified time
     s3_bucket.put_object(Key=tdr_standard_dirty_key, Body="test content")
-    download_file_mock = mocker.patch("src.download_file.download_file")
+    download_file_mock = mocker.patch("src.matcher.download_file")
     download_file_if_not_already_present(settings)
     download_file_mock.assert_not_called()
 
@@ -392,7 +392,7 @@ def test_download_if_s3_is_newer(s3_bucket, mocker, tmpdir):
         f.write("local test content")
     os.utime(local_file_path, (time.time() - 10000, time.time() - 10000))  # Set past modified time
     s3_bucket.put_object(Key=tdr_standard_dirty_key, Body="updated test content")
-    download_file_mock = mocker.patch("src.download_file.download_file")
+    download_file_mock = mocker.patch("src.matcher.download_file")
     download_file_if_not_already_present(settings)
     download_file_mock.assert_called_once_with(settings.s3_source_location.bucket, settings.s3_source_location.key,
                                                settings.local_download_location)
