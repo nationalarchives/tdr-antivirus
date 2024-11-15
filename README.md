@@ -4,18 +4,19 @@ This is the code and configuration to carry out the antivirus checks on a single
 
 Lambda takes parameters to configure the scanning options.
 
-| Parameter Name           | Optional | Default Value                                         | Description                                                                                      | Example                     | 
-|--------------------------|----------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------|-----------------------------|
-| consignment_id           | false    | N/A                                                   | TDR UUID for the consignment the object to scan belongs to                                       |                             |
-| file_id                  | false    | N/A                                                   | Name of the object to scan                                                                       |                             |
-| user_id                  | true     | `None`                                                | TDR UUID of the user who uploaded the object to scan                                             |                             |
-| original_path            | true     | `None`                                                | Original path to the object to scan. Used to create local version of object for scanning         |                             |
-| scan_type                | true     | N/A                                                   | **Deprecated**. Use combination of optional parameters to set configuration. Type of scan to run | `metadata` / `consignment`  |
-| s3_source_bucket         | true     | `tdr-upload-files-cloudfront-dirty-{tdr environment}` | S3 bucket containing the object to scan                                                          | `{some AWS S3 bucket name}` |
-| s3_source_bucket_key     | true     | `{user_id}/{consignment_id}/{file_id}`                | S3 bucket key of the object to scan                                                              |                             |
-| s3_upload_bucket         | true     | `tdr-upload-files-{tdr environment}`                  | S3 bucket to copy clean objects to. If empty string then no copy occurs                          |                             |
-| s3_upload_bucket_key     | true     | `{consignment_id}/{file_id}`                          | S3 bucket key of clean object. If empty value string no copy occurs                              |                             |
-| s3_quarantine_bucket     | true     | `tdr-upload-files-quarantine-{tdr environment}`       | S3 bucket to copy infected objects to                                                            |                             |
+| Parameter Name                  | Optional | Default Value                                         | Description                                                                                      | Example                     | 
+|---------------------------------|----------|-------------------------------------------------------|--------------------------------------------------------------------------------------------------|-----------------------------|
+| consignment_id                  | false    | N/A                                                   | TDR UUID for the consignment the object to scan belongs to                                       |                             |
+| file_id                         | false    | N/A                                                   | Name of the object to scan                                                                       |                             |
+| user_id                         | true     | `None`                                                | TDR UUID of the user who uploaded the object to scan                                             |                             |
+| original_path                   | true     | `None`                                                | Original path to the object to scan. Used to create local version of object for scanning         |                             |
+| scan_type                       | true     | N/A                                                   | **Deprecated**. Use combination of optional parameters to set configuration. Type of scan to run | `metadata` / `consignment`  |
+| s3_source_bucket                | true     | `tdr-upload-files-cloudfront-dirty-{tdr environment}` | S3 bucket containing the object to scan                                                          | `{some AWS S3 bucket name}` |
+| s3_source_bucket_key            | true     | `{user_id}/{consignment_id}/{file_id}`                | S3 bucket key of the object to scan                                                              |                             |
+| s3_upload_bucket                | true     | `tdr-upload-files-{tdr environment}`                  | S3 bucket to copy clean objects to. If empty string then no copy occurs                          |                             |
+| s3_upload_bucket_key            | true     | `{consignment_id}/{file_id}`                          | S3 bucket key of clean object. If empty value string no copy occurs                              |                             |
+| s3_quarantine_bucket            | true     | `tdr-upload-files-quarantine-{tdr environment}`       | S3 bucket to copy infected objects to                                                            |                             |
+| guard_duty_malware_scan_enabled | true     | True                                                  | Flag whether source s3 bucket has AWS GuardDuty malicious object scanning enabled.               |                             |
 
 ### Example Configuration
 
@@ -28,6 +29,7 @@ Object to scan details:
 * **s3 clean bucket name**: `some-clean-bucket`
 * **s3 clean object key**: same as s3 source object key
 * **s3 quarantine bucket name**: `tdr-upload-files-quarantine-{tdr environment}`
+* **AWS GuardDuty Malicious Scanning Enabled**: False
 
 Event configuration to support the above would be as follows:
 
@@ -39,7 +41,8 @@ Event configuration to support the above would be as follows:
         "s3SourceBucket": "some-source-bucket",
         "s3SourceBucketKey": "identifier1/identifer2/myFileToScan.txt",
         "s3UploadBucket": "some-clean-bucket",
-        "s3UploadBucketKey": "identifier1/identifer2/myFileToScan.txt"        
+        "s3UploadBucketKey": "identifier1/identifer2/myFileToScan.txt",
+        "guardDutyMalwareScanEnabled": False
    }
 ```
 
