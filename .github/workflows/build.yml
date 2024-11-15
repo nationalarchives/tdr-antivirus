@@ -20,13 +20,13 @@ jobs:
         docker run -itd --rm --name dependencies yara-dependencies
         docker cp dependencies:/lambda/dependencies.zip .
         docker run -itd --rm --name rules yara-rules
-        mkdir -p lambda/src
-        docker cp rules:/rules/output ./lambda/src
-        unzip -q dependencies.zip -d ./lambda/src
-        cp src/matcher.py src/guard_duty_malware_scan.py src/download_file.py ./lambda/src
+        mkdir lambda
+        docker cp rules:/rules/output ./lambda
+        unzip -q dependencies.zip -d ./lambda
+        cp src/matcher.py ./lambda
         cd lambda
         zip -r9 function.zip .
-        cd ../..
+        cd ..
     secrets:
       MANAGEMENT_ACCOUNT: ${{ secrets.MANAGEMENT_ACCOUNT }}
       WORKFLOW_PAT: ${{ secrets.WORKFLOW_PAT }}
