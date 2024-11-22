@@ -96,6 +96,7 @@ def matcher_lambda_handler(event, lambda_context):
 
     settings = build_settings(event)
     guard_duty_scan_enabled = settings.guard_duty_malware_scan_enabled
+    mark_object_for_deletion = settings.mark_scanned_objects_for_deletion
     download_file_if_not_already_present(settings)
     rules = yara.load("output")
     matched_antivirus_rules = [x.rule for x in rules.match(settings.local_download_location)]
@@ -118,8 +119,9 @@ def matcher_lambda_handler(event, lambda_context):
             )
 
     logger.info("Key %s processed", settings.s3_source_location.key)
-    tag_object_for_deletion(s3_client, settings.s3_source_location.bucket, settings.s3_source_location.key)
-    logger.info("Object %s tagged for deletion", settings.s3_source_location.key)
+    if mark_object_for_deletion:
+        tag_object_for_deletion(s3_client, settings.s3_source_location.bucket, settings.s3_source_location.key)
+        logger.info("Object %s tagged for deletion", settings.s3_source_location.key)
     results = matched_antivirus_rules + aws_guard_duty_threat_found
 
     return antivirus_results_dict(settings.file_id, results, handler_trigger_time, guard_duty_scan_enabled)
@@ -144,6 +146,7 @@ class VirusCheckSettings:
     s3_upload_location: Optional[S3Location]
     local_download_location: str
     guard_duty_malware_scan_enabled: bool
+    mark_scanned_objects_for_deletion: bool
 
 
 class ScanType(Enum):
@@ -156,8 +159,11 @@ def build_settings(event: dict) -> VirusCheckSettings:
     environment = os.environ["ENVIRONMENT"]
     # AWS EFS root directory where object to scan is copied to for scanning
     efs_root_location = os.environ["ROOT_DIRECTORY"]
-    # TDR UUID for the consignment the object to scan belongs to
+    # Whether AWS GuardDuty S3 malware scan has been enabled on source S3 bucket
     guard_duty_malware_scan_enabled = event.get("guardDutyMalwareScanEnabled", True)
+    # Whether to delete scanned objects from source location after copy to relevant S3 bucket
+    delete_scanned_objects = event.get("deleteScannedObjects", True)
+    # TDR UUID for the consignment the object to scan belongs to
     consignment_id = event["consignmentId"]
     # TDR UUID of the object to scan
     file_id = event["fileId"]
@@ -196,7 +202,8 @@ def build_settings(event: dict) -> VirusCheckSettings:
             ),
             s3_upload_location=None,
             local_download_location=f"{root_path}/metadata/{file_id}",
-            guard_duty_malware_scan_enabled=guard_duty_malware_scan_enabled
+            guard_duty_malware_scan_enabled=guard_duty_malware_scan_enabled,
+            mark_scanned_objects_for_deletion=False
         )
     else:
         return VirusCheckSettings(
@@ -211,7 +218,8 @@ def build_settings(event: dict) -> VirusCheckSettings:
             ),
             s3_upload_location=s3_location(s3_upload_bucket, s3_upload_bucket_key),
             local_download_location=f"{root_path}/{original_path}",
-            guard_duty_malware_scan_enabled=guard_duty_malware_scan_enabled
+            guard_duty_malware_scan_enabled=guard_duty_malware_scan_enabled,
+            mark_scanned_objects_for_deletion=delete_scanned_objects
         )
 
 
