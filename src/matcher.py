@@ -53,6 +53,20 @@ def get_object_tagging(s3_client, bucket, object_key):
         )['TagSet']
 
 
+def tag_object_for_deletion(s3_client, bucket, object_key):
+    s3_client.put_object_tagging(
+        Bucket=f'{bucket}',
+        Key=f'{object_key}',
+        Tagging={
+            'TagSet': [
+                {
+                    'Key': 'Delete',
+                    'Value': 'True'
+                },
+            ]
+        })
+
+
 def poll_guard_duty_scan_complete(s3_client, bucket, object_key):
     print(f'Polling for GuardDuty scan result: {object_key}')
     while True:
@@ -104,6 +118,8 @@ def matcher_lambda_handler(event, lambda_context):
             )
 
     logger.info("Key %s processed", settings.s3_source_location.key)
+    tag_object_for_deletion(s3_client, settings.s3_source_location.bucket, settings.s3_source_location.key)
+    logger.info("Object %s tagged for deletion", settings.s3_source_location.key)
     results = matched_antivirus_rules + aws_guard_duty_threat_found
 
     return antivirus_results_dict(settings.file_id, results, handler_trigger_time, guard_duty_scan_enabled)

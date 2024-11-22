@@ -102,6 +102,14 @@ def get_guard_duty_scan_not_enabled_event():
     }
 
 
+def check_source_object_tagging(s3_client, bucket, object_key, expected_key='Delete', expected_value='True'):
+    tagging_response = s3_client.get_object_tagging(Bucket=bucket, Key=object_key)
+    tag_set = tagging_response['TagSet']
+    assert len(tag_set) == 1
+    assert tag_set[0]['Key'] == f'{expected_key}'
+    assert tag_set[0]['Value'] == f'{expected_value}'
+
+
 dirty_s3_bucket = 'tdr-upload-files-cloudfront-dirty-intg'
 quarantine_s3_bucket = 'tdr-upload-files-quarantine-intg'
 metadata_source_location = S3Location(
@@ -150,6 +158,7 @@ def test_load_is_called(s3, s3_client, mocker, tmpdir):
     yara.load.return_value = MockRulesMatchFound()
     matcher.matcher_lambda_handler(get_consignment_event(), None)
     yara.load.assert_called_once_with("output")
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_correct_output_guard_duty_scan_enabled(s3, s3_client, mocker, tmpdir):
@@ -160,6 +169,7 @@ def test_correct_output_guard_duty_scan_enabled(s3, s3_client, mocker, tmpdir):
     assert res["software"] == "yara|awsGuardDutyMalwareScan"
     assert res["softwareVersion"] == yara.__version__
     assert res["databaseVersion"] == "1"
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_correct_output_guard_duty_scan_not_enabled(s3, s3_client, mocker, tmpdir):
@@ -170,6 +180,7 @@ def test_correct_output_guard_duty_scan_not_enabled(s3, s3_client, mocker, tmpdi
     assert res["software"] == "yara"
     assert res["softwareVersion"] == yara.__version__
     assert res["databaseVersion"] == "1"
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_correct_file_id_provided(s3, s3_client, mocker, tmpdir):
@@ -178,6 +189,7 @@ def test_correct_file_id_provided(s3, s3_client, mocker, tmpdir):
     yara.load.return_value = MockRulesMatchFound()
     res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
     assert res["fileId"] == "fileId"
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_match_found(s3, s3_client, mocker, tmpdir):
@@ -186,6 +198,7 @@ def test_match_found(s3, s3_client, mocker, tmpdir):
     yara.load.return_value = MockRulesMatchFound()
     res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
     assert res["result"] == "testmatch"
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_guard_duty_scan_not_enabled_threat_found(s3, mocker, tmpdir, s3_client):
@@ -194,6 +207,7 @@ def test_guard_duty_scan_not_enabled_threat_found(s3, mocker, tmpdir, s3_client)
     yara.load.return_value = MockRulesNoMatch()
     res = matcher.matcher_lambda_handler(get_guard_duty_scan_not_enabled_event(), None)["antivirus"]
     assert res["result"] == ""
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_match_guard_duty_scan_not_enabled_threat_found(s3, mocker, tmpdir, s3_client):
@@ -202,6 +216,7 @@ def test_match_guard_duty_scan_not_enabled_threat_found(s3, mocker, tmpdir, s3_c
     yara.load.return_value = MockRulesMatchFound()
     res = matcher.matcher_lambda_handler(get_guard_duty_scan_not_enabled_event(), None)["antivirus"]
     assert res["result"] == "testmatch"
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_guard_duty_threat_found(s3, mocker, tmpdir, s3_client):
@@ -210,6 +225,7 @@ def test_guard_duty_threat_found(s3, mocker, tmpdir, s3_client):
     yara.load.return_value = MockRulesNoMatch()
     res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
     assert res["result"] == "awsGuardDutyThreatFound"
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_yara_match_guard_duty_threat_found(s3, mocker, tmpdir, s3_client):
@@ -218,6 +234,7 @@ def test_yara_match_guard_duty_threat_found(s3, mocker, tmpdir, s3_client):
     yara.load.return_value = MockRulesMatchFound()
     res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
     assert res["result"] == "testmatch\nawsGuardDutyThreatFound"
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_no_match_found(s3, s3_client, mocker, tmpdir):
@@ -226,6 +243,7 @@ def test_no_match_found(s3, s3_client, mocker, tmpdir):
     yara.load.return_value = MockRulesNoMatch()
     res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
     assert res["result"] == ""
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_multiple_match_found(s3, s3_client, mocker, tmpdir):
@@ -234,6 +252,7 @@ def test_multiple_match_found(s3, s3_client, mocker, tmpdir):
     yara.load.return_value = MockRulesMultipleMatchFound()
     res = matcher.matcher_lambda_handler(get_consignment_event(), None)["antivirus"]
     assert res["result"] == "testmatch\ntestmatch"
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_match_found_metadata(s3, s3_client, mocker, tmpdir):
@@ -242,6 +261,7 @@ def test_match_found_metadata(s3, s3_client, mocker, tmpdir):
     yara.load.return_value = MockRulesMatchFound()
     res = matcher.matcher_lambda_handler(get_metadata_event(), None)["antivirus"]
     assert res["result"] == "testmatch"
+    check_source_object_tagging(s3_client, metadata_source_location.bucket, metadata_source_location.key)
 
 
 def test_guard_duty_threat_found_metadata(s3, s3_client, mocker, tmpdir):
@@ -250,6 +270,7 @@ def test_guard_duty_threat_found_metadata(s3, s3_client, mocker, tmpdir):
     yara.load.return_value = MockRulesNoMatch
     res = matcher.matcher_lambda_handler(get_metadata_event(), None)["antivirus"]
     assert res["result"] == "awsGuardDutyThreatFound"
+    check_source_object_tagging(s3_client, metadata_source_location.bucket, metadata_source_location.key)
 
 
 def test_match_guard_duty_threat_found_metadata(s3, s3_client, mocker, tmpdir):
@@ -258,6 +279,7 @@ def test_match_guard_duty_threat_found_metadata(s3, s3_client, mocker, tmpdir):
     yara.load.return_value = MockRulesMatchFound()
     res = matcher.matcher_lambda_handler(get_metadata_event(), None)["antivirus"]
     assert res["result"] == "testmatch\nawsGuardDutyThreatFound"
+    check_source_object_tagging(s3_client, metadata_source_location.bucket, metadata_source_location.key)
 
 
 def test_no_match_found_metadata(s3, s3_client, mocker, tmpdir):
@@ -266,6 +288,7 @@ def test_no_match_found_metadata(s3, s3_client, mocker, tmpdir):
     yara.load.return_value = MockRulesNoMatch()
     res = matcher.matcher_lambda_handler(get_metadata_event(), None)["antivirus"]
     assert res["result"] == ""
+    check_source_object_tagging(s3_client, metadata_source_location.bucket, metadata_source_location.key)
 
 
 def test_multiple_match_found_metadata(s3, s3_client, mocker, tmpdir):
@@ -274,9 +297,10 @@ def test_multiple_match_found_metadata(s3, s3_client, mocker, tmpdir):
     yara.load.return_value = MockRulesMultipleMatchFound()
     res = matcher.matcher_lambda_handler(get_metadata_event(), None)["antivirus"]
     assert res["result"] == "testmatch\ntestmatch"
+    check_source_object_tagging(s3_client, metadata_source_location.bucket, metadata_source_location.key)
 
 
-def test_bucket_not_found(s3, mocker, tmpdir):
+def test_bucket_not_found(s3, s3_client, mocker, tmpdir):
     with pytest.raises(ClientError) as err:
         set_environment(tmpdir)
         s3.create_bucket(Bucket='anotherbucket', CreateBucketConfiguration=location)
@@ -286,6 +310,7 @@ def test_bucket_not_found(s3, mocker, tmpdir):
         yara.load.return_value = MockRulesNoMatch()
         matcher.matcher_lambda_handler(get_consignment_event(), None)
     assert err.typename == 'NoSuchBucket'
+    # check_source_object_tagging(s3_client, 'anotherbucket', tdr_standard_dirty_key)
 
 
 def test_key_not_found(s3, s3_client, mocker, tmpdir):
@@ -306,6 +331,7 @@ def test_match_fails(s3, s3_client, mocker, tmpdir):
         mocker.patch('yara.load')
         yara.load.return_value = MockRulesMatchError()
         matcher.matcher_lambda_handler(get_consignment_event(), None)
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key, expected_key='GuardDutyMalwareScanStatus', expected_value='NO_THREATS_FOUND')
 
 
 def test_copy_to_quarantine(s3, s3_client, mocker, tmpdir):
@@ -315,6 +341,7 @@ def test_copy_to_quarantine(s3, s3_client, mocker, tmpdir):
     matcher.matcher_lambda_handler(get_consignment_event(), None)
     res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=tdr_standard_copy_key)
     assert res["Body"].read() == b"test"
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_copy_to_quarantine_with_match_metadata(s3, s3_client, mocker, tmpdir):
@@ -324,6 +351,8 @@ def test_copy_to_quarantine_with_match_metadata(s3, s3_client, mocker, tmpdir):
     matcher.matcher_lambda_handler(get_metadata_event(), None)
     res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=tdr_metadata_copy_key)
     assert res["Body"].read() == b"test"
+    check_source_object_tagging(s3_client, metadata_source_location.bucket, metadata_source_location.key)
+
 
 def test_no_copy_to_quarantine_clean(s3, s3_client, mocker, tmpdir):
     with pytest.raises(ClientError) as err:
@@ -333,6 +362,7 @@ def test_no_copy_to_quarantine_clean(s3, s3_client, mocker, tmpdir):
         matcher.matcher_lambda_handler(get_consignment_event(), None)
         s3_client.get_object(Bucket=quarantine_s3_bucket, Key="consignmentId")
     assert err.typename == 'NoSuchKey'
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_copy_to_clean_bucket(s3, s3_client, mocker, tmpdir):
@@ -342,6 +372,7 @@ def test_copy_to_clean_bucket(s3, s3_client, mocker, tmpdir):
     matcher.matcher_lambda_handler(get_consignment_event(), None)
     res = s3_client.get_object(Bucket=clean_s3_bucket, Key=tdr_standard_copy_key)
     assert res["Body"].read() == b"test"
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_no_copy_to_clean_without_match_metadata(s3, s3_client, mocker, tmpdir):
@@ -352,6 +383,7 @@ def test_no_copy_to_clean_without_match_metadata(s3, s3_client, mocker, tmpdir):
         matcher.matcher_lambda_handler(get_metadata_event(), None)
         s3_client.get_object(Bucket=clean_s3_bucket, Key="consignmentId")
     assert err.typename == 'NoSuchKey'
+    check_source_object_tagging(s3_client, metadata_source_location.bucket, metadata_source_location.key)
 
 
 def test_no_copy_to_clean_with_match(s3, s3_client, mocker, tmpdir):
@@ -362,6 +394,7 @@ def test_no_copy_to_clean_with_match(s3, s3_client, mocker, tmpdir):
         matcher.matcher_lambda_handler(get_consignment_event(), None)
         s3_client.get_object(Bucket=clean_s3_bucket, Key=tdr_standard_copy_key)
     assert err.typename == 'NoSuchKey'
+    check_source_object_tagging(s3_client, dirty_s3_bucket, tdr_standard_dirty_key)
 
 
 def test_download_if_not_present(s3, s3_bucket, mocker, tmpdir):
