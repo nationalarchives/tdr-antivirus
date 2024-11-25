@@ -142,6 +142,8 @@ def set_environment(temp_directory):
     os.environ["ENVIRONMENT"] = "intg"
     os.environ["ROOT_DIRECTORY"] = str(temp_directory)
     os.environ["AWS_LAMBDA_FUNCTION_VERSION"] = "1"
+    os.environ["DELETE_OBJECT_TAG_KEY"] = "Delete"
+    os.environ["DELETE_OBJECT_TAG_VALUE"] = "True"
 
 
 def set_up(s3, s3_client, tmpdir, dirty_bucket = dirty_s3_bucket, object_key = tdr_standard_dirty_key, guard_duty_result = 'NO_THREATS_FOUND'):

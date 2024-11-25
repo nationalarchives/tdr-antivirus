@@ -54,14 +54,16 @@ def get_object_tagging(s3_client, bucket, object_key):
 
 
 def tag_object_for_deletion(s3_client, bucket, object_key):
+    key = os.environ['DELETE_OBJECT_TAG_KEY']
+    value = os.environ['DELETE_OBJECT_TAG_VALUE']
     s3_client.put_object_tagging(
         Bucket=f'{bucket}',
         Key=f'{object_key}',
         Tagging={
             'TagSet': [
                 {
-                    'Key': 'Delete',
-                    'Value': 'True'
+                    'Key': f'{key}',
+                    'Value': f'{value}'
                 },
             ]
         })
