@@ -313,16 +313,17 @@ def test_copy_to_quarantine(s3, s3_client, mocker, tmpdir):
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
     matcher.matcher_lambda_handler(get_consignment_event(), None)
-    res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=tdr_standard_copy_key)
+    res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=tdr_standard_copy_key, ResponseContentType='application/octet-stream')
     assert res["Body"].read() == b"test"
 
+def
 
 def test_copy_to_quarantine_with_match_metadata(s3, s3_client, mocker, tmpdir):
     set_up(s3, s3_client, tmpdir, dirty_bucket=metadata_source_location.bucket, object_key=metadata_source_location.key)
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesMatchFound()
     matcher.matcher_lambda_handler(get_metadata_event(), None)
-    res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=tdr_metadata_copy_key)
+    res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=tdr_metadata_copy_key, ResponseContentType='application/octet-stream')
     assert res["Body"].read() == b"test"
 
 def test_no_copy_to_quarantine_clean(s3, s3_client, mocker, tmpdir):
@@ -331,7 +332,7 @@ def test_no_copy_to_quarantine_clean(s3, s3_client, mocker, tmpdir):
         mocker.patch('yara.load')
         yara.load.return_value = MockRulesNoMatch()
         matcher.matcher_lambda_handler(get_consignment_event(), None)
-        s3_client.get_object(Bucket=quarantine_s3_bucket, Key="consignmentId")
+        s3_client.get_object(Bucket=quarantine_s3_bucket, Key="consignmentId", ResponseContentType='application/octet-stream')
     assert err.typename == 'NoSuchKey'
 
 
@@ -340,7 +341,7 @@ def test_copy_to_clean_bucket(s3, s3_client, mocker, tmpdir):
     mocker.patch('yara.load')
     yara.load.return_value = MockRulesNoMatch()
     matcher.matcher_lambda_handler(get_consignment_event(), None)
-    res = s3_client.get_object(Bucket=clean_s3_bucket, Key=tdr_standard_copy_key)
+    res = s3_client.get_object(Bucket=clean_s3_bucket, Key=tdr_standard_copy_key, ResponseContentType='application/octet-stream')
     assert res["Body"].read() == b"test"
 
 
