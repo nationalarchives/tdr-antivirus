@@ -5,7 +5,7 @@ import boto3
 import pytest
 import yara
 from botocore.errorfactory import ClientError
-from moto import mock_s3
+from moto.s3 import mock_s3
 
 from src import matcher
 from src.matcher import S3Location
