@@ -5,7 +5,7 @@ import boto3
 import pytest
 import yara
 from botocore.errorfactory import ClientError
-from moto.s3 import mock_s3
+from moto import mock_aws
 
 from src import matcher
 from src.matcher import S3Location
@@ -24,13 +24,13 @@ def aws_credentials():
 
 @pytest.fixture(scope='function')
 def s3(aws_credentials):
-    with mock_s3():
+    with mock_aws():
         yield boto3.resource('s3', region_name='eu-west-2')
 
 
 @pytest.fixture(scope='function')
 def s3_client(aws_credentials):
-    with mock_s3():
+    with mock_aws():
         yield boto3.client('s3', region_name='eu-west-2')
 
 
