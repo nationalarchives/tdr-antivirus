@@ -8,6 +8,7 @@ jobs:
   pre-deploy:
     uses: nationalarchives/tdr-github-actions/.github/workflows/lambda_build.yml@main
     with:
+      lambda-name: yara-av-v2
       repo-name: tdr-antivirus
       artifact-name: function
       artifact-file-type: zip
