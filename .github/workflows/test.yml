@@ -16,6 +16,6 @@ jobs:
       test-command: |
         pip install -r requirements.txt
         pip install pyopenssl --upgrade
-        python -m pytest -v
+        python -m pytest
     secrets:
       SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
