@@ -6,7 +6,7 @@ on:
       - master
 jobs:
   pre-deploy:
-    uses: nationalarchives/tdr-github-actions/.github/workflows/lambda_build.yml@new-lambda-s3-structure
+    uses: nationalarchives/tdr-github-actions/.github/workflows/lambda_build.yml@main
     with:
       lambda-name: yara-av-v2
       repo-name: tdr-antivirus
@@ -36,6 +36,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: gh workflow run deploy.yml --ref TDRD-666-add-lambda-name-argument -f environment=intg -f to-deploy=${{ needs.pre-deploy.outputs.next-version }}
+      - run: gh workflow run deploy.yml -f environment=intg -f to-deploy=${{ needs.pre-deploy.outputs.next-version }}
         env:
           GITHUB_TOKEN: ${{ secrets.WORKFLOW_PAT }}
