@@ -316,8 +316,6 @@ def test_copy_to_quarantine(s3, s3_client, mocker, tmpdir):
     res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=tdr_standard_copy_key, ResponseContentType='application/octet-stream')
     assert res["Body"].read() == b"test"
 
-def
-
 def test_copy_to_quarantine_with_match_metadata(s3, s3_client, mocker, tmpdir):
     set_up(s3, s3_client, tmpdir, dirty_bucket=metadata_source_location.bucket, object_key=metadata_source_location.key)
     mocker.patch('yara.load')
