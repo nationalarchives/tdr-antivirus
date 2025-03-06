@@ -5,7 +5,7 @@ import boto3
 import pytest
 import yara
 from botocore.errorfactory import ClientError
-from moto import mock_s3
+from moto import mock_aws
 
 from src import matcher
 from src.matcher import S3Location
@@ -24,13 +24,13 @@ def aws_credentials():
 
 @pytest.fixture(scope='function')
 def s3(aws_credentials):
-    with mock_s3():
+    with mock_aws():
         yield boto3.resource('s3', region_name='eu-west-2')
 
 
 @pytest.fixture(scope='function')
 def s3_client(aws_credentials):
-    with mock_s3():
+    with mock_aws():
         yield boto3.client('s3', region_name='eu-west-2')
 
 
@@ -315,7 +315,6 @@ def test_copy_to_quarantine(s3, s3_client, mocker, tmpdir):
     matcher.matcher_lambda_handler(get_consignment_event(), None)
     res = s3_client.get_object(Bucket=quarantine_s3_bucket, Key=tdr_standard_copy_key)
     assert res["Body"].read() == b"test"
-
 
 def test_copy_to_quarantine_with_match_metadata(s3, s3_client, mocker, tmpdir):
     set_up(s3, s3_client, tmpdir, dirty_bucket=metadata_source_location.bucket, object_key=metadata_source_location.key)

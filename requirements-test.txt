@@ -1,5 +1,5 @@
-boto3 == 1.17.20
-moto == 3.0.7
+boto3 == 1.37.7
+moto >= 4.2.0
 pytest == 6.2.5
 pytest-mock == 3.5.1
 pytest-cov == 2.11.1
