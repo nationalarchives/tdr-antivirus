@@ -1,9 +1,7 @@
 import os
-import time
 
 import boto3
 import pytest
-import yara
 from botocore.errorfactory import ClientError
 from moto import mock_aws
 
@@ -39,37 +37,6 @@ def s3_bucket(s3):
     return s3.Bucket(metadata_source_location.bucket)
 
 
-class MockMatch:
-    rule = "testmatch"
-
-
-class MockRulesMatchFound:
-
-    @staticmethod
-    def match(data):
-        return [MockMatch()]
-
-
-class MockRulesMultipleMatchFound:
-
-    @staticmethod
-    def match(data):
-        return [MockMatch(), MockMatch()]
-
-
-class MockRulesNoMatch:
-
-    @staticmethod
-    def match(data):
-        return []
-
-
-class MockRulesMatchError:
-
-    @staticmethod
-    def match(data):
-        raise yara.Error()
-
 class MockSettings:
     def __init__(self, tmpdir, bucket, key):
         self.local_download_location = os.path.join(tmpdir, "tests")
@@ -89,15 +56,6 @@ def get_metadata_event():
         "scanType": "metadata",
         "consignmentId": "consignmentId",
         "fileId": "draft-metadata.csv",
-    }
-
-def get_guard_duty_scan_not_enabled_event():
-    return {
-        "userId": "userId",
-        "consignmentId": "consignmentId",
-        "fileId": "fileId",
-        "originalPath": "original/path",
-        "guardDutyMalwareScanEnabled": False
     }
 
 
@@ -150,15 +108,6 @@ def test_correct_output_guard_duty_scan_enabled(s3, s3_client, tmpdir):
     assert res["softwareVersion"] == "AWSGuardDuty"
     assert res["databaseVersion"] == "1"
     assert res["result"] == ""
-
-
-# def test_correct_output_guard_duty_scan_not_enabled(s3, s3_client, mocker, tmpdir):
-#     with pytest.raises(RuntimeError) as err:
-#         set_up(s3, s3_client, tmpdir)
-#         mocker.patch('yara.load')
-#         yara.load.return_value = MockRulesMatchFound()
-#         matcher.matcher_lambda_handler(get_guard_duty_scan_not_enabled_event(), None)
-#     assert err.typename == 'RuntimeError'
 
 
 def test_correct_file_id_provided(s3, s3_client, tmpdir):
