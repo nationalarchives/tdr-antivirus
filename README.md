@@ -70,14 +70,15 @@ This deploys the lambda from S3
 
 ## Running locally
 
-Create a virtual environment in the antivirus directory
+Create a virtual environment in the antivirus directory:
+
 `python3 -m venv venv`
 
-Activate the environment
+Activate the environment:
 
 `source venv/bin/activate`
 
-Install dependencies
+Install dependencies:
 
 `pip install -r requirements.txt`
 
