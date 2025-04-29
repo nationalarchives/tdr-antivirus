@@ -13,17 +13,8 @@ jobs:
       artifact-name: function
       artifact-file-type: zip
       artifact-path: lambda
-      build-command: |
-        wget --header "Authorization: token $GITHUB_TOKEN" https://raw.githubusercontent.com/nationalarchives/tdr-configurations/master/antivirus/rules.json
-        docker build -f Dockerfile-yara --pull --no-cache --build-arg YARA_VERSION=$(cat yara-version.txt) -t yara .
-        docker build -f Dockerfile-dependencies --pull --no-cache --build-arg YARA_VERSION=$(cat yara-version.txt) -t yara-dependencies .
-        docker build -f Dockerfile-compile --no-cache --build-arg YARA_VERSION=$(cat yara-version.txt) -t yara-rules .
-        docker run -itd --rm --name dependencies yara-dependencies
-        docker cp dependencies:/lambda/dependencies.zip .
-        docker run -itd --rm --name rules yara-rules
-        mkdir lambda
-        docker cp rules:/rules/output ./lambda
-        unzip -q dependencies.zip -d ./lambda
+      build-command: |        
+        mkdir lambda        
         cp src/matcher.py ./lambda
         cd lambda
         zip -r9 function.zip .
