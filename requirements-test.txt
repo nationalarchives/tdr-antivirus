@@ -4,4 +4,3 @@ pytest == 6.2.5
 pytest-mock == 3.5.1
 pytest-cov == 2.11.1
 rsa>=4.7 # not directly required, pinned by Snyk to avoid a vulnerability
-plyara == 2.1.1
