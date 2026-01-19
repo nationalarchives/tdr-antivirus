@@ -6,7 +6,7 @@ on:
       - master
 jobs:
   pre-deploy:
-    uses: nationalarchives/tdr-github-actions/.github/workflows/lambda_build.yml@23171128721c6f4e951b8c6868a57a787e44db82 # v.0.0.8
+    uses: nationalarchives/tdr-github-actions/.github/workflows/lambda_build.yml@f52edf22c81f568202369a3b31da0277541b0507 # v.0.0.11
     with:
       lambda-name: yara-av-v2
       repo-name: tdr-antivirus
@@ -29,7 +29,7 @@ jobs:
     needs: pre-deploy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - run: gh workflow run deploy.yml -f environment=intg -f to-deploy=${{ needs.pre-deploy.outputs.next-version }}
         env:
           GITHUB_TOKEN: ${{ secrets.WORKFLOW_PAT }}
