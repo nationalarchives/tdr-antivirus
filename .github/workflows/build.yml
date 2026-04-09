@@ -4,8 +4,13 @@ on:
   push:
     branches:
       - master
+permissions:
+  contents: read
 jobs:
   pre-deploy:
+    permissions:
+      contents: write
+      id-token: write
     uses: nationalarchives/tdr-github-actions/.github/workflows/lambda_build.yml@640da96576fd19e752f663f280feac8ebeadd661 # v.0.0.31
     with:
       lambda-name: yara-av-v2
@@ -28,6 +33,8 @@ jobs:
   deploy:
     needs: pre-deploy
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - run: gh workflow run deploy.yml -f environment=intg -f to-deploy=${{ needs.pre-deploy.outputs.next-version }}
