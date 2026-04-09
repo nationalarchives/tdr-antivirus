@@ -21,7 +21,7 @@ permissions:
   contents: write
 jobs:
   deploy:
-    uses: nationalarchives/tdr-github-actions/.github/workflows/lambda_deploy.yml@13faff54c193651ee30482ebdf01e083c8b14203 # v.0.0.17
+    uses: nationalarchives/tdr-github-actions/.github/workflows/lambda_deploy.yml@4cce7fa069b9dbecddbdacd9350f66adc50ac815 # v.0.0.22
     with:
       lambda-name: yara-av-v2
       deployment-package: function.zip
