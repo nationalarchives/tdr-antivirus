@@ -6,7 +6,7 @@ on:
       - master
 jobs:
   pre-deploy:
-    uses: nationalarchives/tdr-github-actions/.github/workflows/lambda_build.yml@4cce7fa069b9dbecddbdacd9350f66adc50ac815 # v.0.0.22
+    uses: nationalarchives/tdr-github-actions/.github/workflows/lambda_build.yml@640da96576fd19e752f663f280feac8ebeadd661 # v.0.0.31
     with:
       lambda-name: yara-av-v2
       repo-name: tdr-antivirus
