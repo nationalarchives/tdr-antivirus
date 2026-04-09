@@ -10,7 +10,7 @@ permissions:
   contents: write
 jobs:
   test:
-    uses: nationalarchives/tdr-github-actions/.github/workflows/tdr_test.yml@9bc380ff482dca2db5537334883eed89faa07452 # v.0.0.32
+    uses: nationalarchives/tdr-github-actions/.github/workflows/tdr_test.yml@0deb3eafdf01ca41aac6cb81f3f0112a7a692b24 # v.0.0.33
     with:
       repo-name: tdr-antivirus
       test-command: |
