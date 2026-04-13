@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
-    uses: nationalarchives/tdr-github-actions/.github/workflows/lambda_build.yml@0deb3eafdf01ca41aac6cb81f3f0112a7a692b24 # v.0.0.33
+    uses: nationalarchives/tdr-github-actions/.github/workflows/lambda_build.yml@27efbc03aaaa9696eea85ab7a9363d6f92733471 # v.0.0.34
     with:
       lambda-name: yara-av-v2
       repo-name: tdr-antivirus
